@@ -38,39 +38,146 @@ Baselium+ monitors the daily behavioral patterns of elderly individuals and dete
 
 ```
 baselium-plus/
+│
 ├── apps/
-│   ├── web/                        ← React (Vite) web frontend
-│   │   ├── src/
-│   │   │   ├── components/         ← Reusable UI components
-│   │   │   ├── pages/              ← One file per route/screen
-│   │   │   ├── hooks/              ← Custom React hooks
-│   │   │   ├── lib/                ← Supabase client, utilities
-│   │   │   ├── store/              ← Global state (Zustand)
-│   │   │   └── types/              ← TypeScript types
-│   │   ├── public/
-│   │   └── package.json
 │   │
-│   └── mobile/                     ← React Native (Expo) mobile app
+│   ├── web/                               ← React (Vite)
+│   │   ├── public/
+│   │   ├── src/
+│   │   │   ├── assets/                    ← Images, icons, fonts
+│   │   │   ├── components/
+│   │   │   │   ├── common/
+│   │   │   │   ├── forms/
+│   │   │   │   └── charts/
+│   │   │   │
+│   │   │   ├── features/                  ← Feature-based modules
+│   │   │   │   ├── auth/
+│   │   │   │   ├── patient/
+│   │   │   │   ├── dashboard/
+│   │   │   │   └── wellness/
+│   │   │   │
+│   │   │   ├── hooks/
+│   │   │   ├── layouts/
+│   │   │   ├── pages/
+│   │   │   ├── routes/
+│   │   │   ├── services/                  ← API calls
+│   │   │   ├── store/                     ← Zustand
+│   │   │   ├── utils/
+│   │   │   ├── constants/
+│   │   │   └── main.tsx
+│   │   │
+│   │   ├── tests/
+│   │   ├── .env
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   │
+│   └── mobile/                            ← React Native + Expo
 │       ├── src/
 │       │   ├── components/
-│       │   ├── screens/            ← Mobile screens
+│       │   ├── features/
+│       │   ├── screens/
 │       │   ├── hooks/
-│       │   └── lib/
-│       ├── app.json
-│       └── package.json
+│       │   ├── services/
+│       │   ├── navigation/
+│       │   ├── store/
+│       │   └── utils/
+│       │
+│       ├── assets/
+│       ├── tests/
+│       ├── package.json
+│       └── app.json
 │
-├── backend/                        ← FastAPI Python backend
+│
+├── packages/                              ← Shared reusable code
+│   │
+│   ├── ui/                                ← Shared components
+│   │   ├── Button/
+│   │   ├── Modal/
+│   │   └── Card/
+│   │
+│   ├── types/                             ← Shared TS types
+│   │   ├── user.ts
+│   │   ├── wellness.ts
+│   │   └── patient.ts
+│   │
+│   ├── utils/
+│   │   ├── validators.ts
+│   │   └── dateHelpers.ts
+│   │
+│   └── api-client/                        ← Shared API SDK
+│
+│
+├── backend/
+│   │
 │   ├── app/
-│   │   ├── routers/                ← API route files
-│   │   ├── models/                 ← Pydantic data models
-│   │   ├── services/               ← Business logic
-│   │   └── ml/                     ← AI/ML logic (baseline computation, anomaly detection)
-│   ├── main.py
-│   └── requirements.txt
+│   │   │
+│   │   ├── api/
+│   │   │   └── v1/
+│   │   │       ├── auth.py
+│   │   │       ├── patients.py
+│   │   │       └── wellness.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── security.py
+│   │   │   └── database.py
+│   │   │
+│   │   ├── models/
+│   │   ├── schemas/                       ← Pydantic schemas
+│   │   ├── services/
+│   │   ├── repositories/                  ← Database access layer
+│   │   ├── middleware/
+│   │   ├── ml/
+│   │   │   ├── baseline/
+│   │   │   ├── anomaly_detection/
+│   │   │   └── prediction/
+│   │   │
+│   │   └── utils/
+│   │
+│   ├── tests/
+│   ├── alembic/                           ← DB migrations
+│   ├── .env
+│   ├── requirements.txt
+│   └── main.py
 │
-└── docs/                           ← Documentation
-    ├── api.md                      ← API endpoint reference
-    └── setup.md                    ← Local development setup guide
+│
+├── infrastructure/                        ← DevOps
+│   ├── docker/
+│   │   ├── frontend.Dockerfile
+│   │   ├── backend.Dockerfile
+│   │   └── docker-compose.yml
+│   │
+│   ├── nginx/
+│   └── deployment/
+│
+│
+├── scripts/
+│   ├── seed_db.py
+│   ├── reset_db.py
+│   └── create_admin.py
+│
+│
+├── docs/
+│   ├── architecture.md
+│   ├── api.md
+│   ├── setup.md
+│   ├── erd.md
+│   └── deployment.md
+│
+│
+├── .github/
+│   └── workflows/
+│       ├── frontend-ci.yml
+│       ├── backend-ci.yml
+│       └── deploy.yml
+│
+│
+├── .gitignore
+├── README.md
+├── package.json
+├── turbo.json                             ← Monorepo task runner
+├── tsconfig.base.json
+└── pnpm-workspace.yaml
 ```
 
 ---
@@ -113,25 +220,28 @@ See [`docs/setup.md`](./docs/setup.md) for full setup instructions.
 
 ### Quick Start
 
-**Backend**
+**Install all dependencies (from root)**
 ```bash
+pnpm install
+```
+
+**Run all apps via Turborepo**
+```bash
+pnpm turbo dev
+```
+
+**Or run individually:**
+```bash
+# Web
+cd apps/web && pnpm dev
+
+# Mobile
+cd apps/mobile && npx expo start
+
+# Backend
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload
-```
-
-**Web**
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-**Mobile**
-```bash
-cd apps/mobile
-npm install
-npx expo start
 ```
 
 ---
@@ -151,3 +261,4 @@ See [`docs/api.md`](./docs/api.md) for full endpoint documentation.
 5. Ensure secure storage and retrieval of personal health data in compliance with data privacy standards.
 6. Promote elder autonomy through a non-intrusive monitoring solution that reduces the need for physical supervision.
 
+---
