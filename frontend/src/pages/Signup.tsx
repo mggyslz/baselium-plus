@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
+import type { ApiPayload } from "../types";
 
 export default function Signup() {
   const [role, setRole] = useState("elder");
@@ -20,7 +21,7 @@ export default function Signup() {
     setError("");
     setLoading(true);
     try {
-      const payload = { email, password, role, full_name: fullName };
+      const payload: ApiPayload = { email, password, role, full_name: fullName };
       if (role === "caregiver") payload.relationship = relationship;
       if (role === "family") {
         payload.relationship = relationship;

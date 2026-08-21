@@ -4,8 +4,8 @@ import { useAuth } from "../AuthContext";
 
 export default function ElderCheckin() {
   const { session } = useAuth();
-  const [mood, setMood] = useState(3);
-  const [activity, setActivity] = useState(3);
+  const [mood, setMood] = useState<number | string>(3);
+  const [activity, setActivity] = useState<number | string>(3);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);

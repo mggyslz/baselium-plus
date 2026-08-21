@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -22,7 +23,7 @@ function TopBar() {
   );
 }
 
-function RequireAuth({ children }) {
+function RequireAuth({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   if (!session) return <Navigate to="/login" replace />;
   return children;
@@ -30,6 +31,7 @@ function RequireAuth({ children }) {
 
 function Home() {
   const { session } = useAuth();
+  if (!session) return null;
   if (session.role === "elder") return <ElderCheckin />;
   if (session.role === "caregiver") return <CaregiverDashboard />;
   if (session.role === "family") return <FamilyStatus />;

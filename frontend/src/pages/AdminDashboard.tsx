@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
+import type { AdminOverview } from "../types";
 
 export default function AdminDashboard() {
-  const { session } = useAuth(); const [overview, setOverview] = useState({}); const [accounts, setAccounts] = useState([]); const [form, setForm] = useState({ elder_user_id: "", caregiver_id: "" }); const [message, setMessage] = useState(""); const [error, setError] = useState("");
+  const { session } = useAuth(); const [overview, setOverview] = useState<AdminOverview>({}); const [accounts, setAccounts] = useState([]); const [form, setForm] = useState<{ elder_user_id: number | ""; caregiver_id: number | "" }>({ elder_user_id: "", caregiver_id: "" }); const [message, setMessage] = useState(""); const [error, setError] = useState("");
   async function load() { try { const [o, a] = await Promise.all([api.adminOverview(session.token), api.adminAccounts(session.token)]); setOverview(o); setAccounts(a || []); } catch (err) { setError(err.message); } }
   useEffect(() => { load(); }, []);
   async function assign(e) { e.preventDefault(); setError(""); try { await api.adminAssign(session.token, form); setMessage("Caregiver assigned successfully."); setForm({ elder_user_id: "", caregiver_id: "" }); load(); } catch (err) { setError(err.message); } }
