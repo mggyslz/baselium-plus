@@ -5,6 +5,7 @@ import Signup from "./pages/Signup";
 import ElderCheckin from "./pages/ElderCheckin";
 import CaregiverDashboard from "./pages/CaregiverDashboard";
 import FamilyStatus from "./pages/FamilyStatus";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function TopBar() {
   const { session, logout } = useAuth();
@@ -32,6 +33,7 @@ function Home() {
   if (session.role === "elder") return <ElderCheckin />;
   if (session.role === "caregiver") return <CaregiverDashboard />;
   if (session.role === "family") return <FamilyStatus />;
+  if (session.role === "admin") return <AdminDashboard />;
   return null;
 }
 

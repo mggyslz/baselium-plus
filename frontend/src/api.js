@@ -35,4 +35,9 @@ export const api = {
   ackNotification: (token, anomalyId) => request("/api/notifications/ack", { method: "POST", body: { anomaly_id: anomalyId }, token }),
   familyStatus: (token) => request("/api/family/status", { token }),
   revokeFamily: (token, familyId) => request("/api/family/revoke", { method: "POST", body: { family_id: familyId }, token }),
+  assignElder: (token, elderUserId) => request("/api/caregiver/assign", { method: "POST", body: { elder_user_id: Number(elderUserId) }, token }),
+  grantFamily: (token, payload) => request("/api/family/grant", { method: "POST", body: payload, token }),
+  adminOverview: (token) => request("/api/admin/overview", { token }),
+  adminAccounts: (token) => request("/api/admin/accounts", { token }),
+  adminAssign: (token, payload) => request("/api/admin/assign", { method: "POST", body: payload, token }),
 };

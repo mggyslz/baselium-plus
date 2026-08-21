@@ -4,8 +4,10 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
+	"time"
 
 	"baselium/backend/internal/baseline"
 	"baselium/backend/internal/db"
@@ -19,6 +21,9 @@ func env(key, fallback string) string {
 }
 
 func main() {
+	once := flag.Bool("once", false, "run once and exit (useful for manual runs and cron)")
+	interval := flag.Duration("interval", 24*time.Hour, "time between baseline recomputations")
+	flag.Parse()
 	conn, err := db.Connect(
 		env("DB_HOST", "localhost"),
 		env("DB_PORT", "5432"),
@@ -32,27 +37,44 @@ func main() {
 	}
 	defer conn.Close()
 
-	rows, err := conn.Query(`SELECT user_id FROM users`)
-	if err != nil {
-		log.Fatalf("query users failed: %v", err)
-	}
-	var userIDs []int
-	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err == nil {
-			userIDs = append(userIDs, id)
-		}
-	}
-	rows.Close()
-
-	for _, uid := range userIDs {
-		b, err := baseline.Compute(conn, uid)
+	run := func() {
+		rows, err := conn.Query(`SELECT user_id FROM users`)
 		if err != nil {
-			log.Printf("user %d: baseline compute failed: %v", uid, err)
-			continue
+			log.Printf("query users failed: %v", err)
+			return
 		}
-		log.Printf("user %d: baseline recomputed (samples=%d cold_start=%v freq=%.2f)",
-			uid, b.SampleSize, b.IsColdStart, b.CheckinFrequency)
+		var userIDs []int
+		for rows.Next() {
+			var id int
+			if err := rows.Scan(&id); err == nil {
+				userIDs = append(userIDs, id)
+			}
+		}
+		rows.Close()
+
+		for _, uid := range userIDs {
+			b, err := baseline.Compute(conn, uid)
+			if err != nil {
+				log.Printf("user %d: baseline compute failed: %v", uid, err)
+				continue
+			}
+			log.Printf("user %d: baseline recomputed (samples=%d cold_start=%v freq=%.2f)",
+				uid, b.SampleSize, b.IsColdStart, b.CheckinFrequency)
+		}
+		log.Printf("done: %d elders processed", len(userIDs))
 	}
-	log.Printf("done: %d elders processed", len(userIDs))
+
+	run()
+	if *once {
+		return
+	}
+	if *interval <= 0 {
+		log.Fatal("interval must be positive")
+	}
+	log.Printf("baseline scheduler started; interval=%s", *interval)
+	ticker := time.NewTicker(*interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		run()
+	}
 }

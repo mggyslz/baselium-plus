@@ -2,10 +2,17 @@ Table accounts {
   account_id    int          [pk, increment]
   email         varchar(100) [unique, not null]
   password_hash varchar(255) [not null]
-  role          varchar(20)  [not null, note: "CHECK (role IN ('caregiver','elder','family'))"]
+  role          varchar(20)  [not null, note: "CHECK (role IN ('admin','caregiver','elder','family'))"]
   is_active     boolean      [default: true]
   created_at    timestamp    [default: `now()`]
   last_login    timestamp
+}
+
+Table admins {
+  admin_id    int       [pk, increment]
+  account_id  int       [unique, not null, ref: > accounts.account_id]
+  full_name   varchar(100) [not null]
+  created_at  timestamp [default: `now()`]
 }
 
 Table users {

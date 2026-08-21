@@ -10,7 +10,7 @@ Baselium+ is a full-stack behavioral monitoring system for the elderly. It runs 
 | Component | Stack | Run command | Default URL |
 |---|---|---|---|
 | Backend API | Go (stdlib net/http) | `go run cmd/api/main.go` (or `.\baselium-api.exe`) | `http://localhost:8080` |
-| Baseline worker | Go | `go run cmd/worker/main.go` | — (one-off / cron) |
+| Baseline worker | Go | `go run cmd/worker/main.go` | — (daily scheduler; `--once` for manual/cron use) |
 | Frontend | React + Vite | `npm run dev` | `http://localhost:5173` |
 | Database | PostgreSQL 16 | Windows service `postgresql-x64-16` | `localhost:5432` / db `baselium` |
 
@@ -56,12 +56,9 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
   check-in frequency) over a 7-day window, with cold-start handling for
   <7 days of history.
 - `internal/anomaly` implements deviation detection + severity classification.
-- `cmd/worker/main.go` recomputes baselines for all elders (run manually or on
-  a schedule).
+- `cmd/worker/main.go` recomputes baselines for all elders on a 24-hour
+  schedule. Use `--once` for a manual/cron run or `--interval 1h` for local testing.
 
-> **Note:** The worker and anomaly logic exist in the code, but there is currently
-> **no automated scheduler** wiring baseline recomputation on a cadence. For demos,
-> run `go run cmd/worker/main.go` after adding check-ins.
 
 ### Database Schema ✅
 All 9 tables from `backend/migrations/0001_init.sql` applied:
@@ -72,9 +69,8 @@ All 9 tables from `backend/migrations/0001_init.sql` applied:
 ---
 
 ## Known gaps / not yet done
-- No API/UI to **assign elders to caregivers** — done via direct SQL
-  (`INSERT INTO user_caregiver ...`).
-- No scheduled worker/cron for rolling baseline recomputation.
+- Caregivers can assign elders and create family-viewer access from the dashboard’s
+  **Access management** tab (with protected APIs behind it).
 - Notifications are stored in DB but **WebSocket / FCM push delivery is not wired**.
 - Mobile React Native check-in app (from the proposal) not present in this repo.
 - Cosmetic bug: elder check-in heading renders an empty name

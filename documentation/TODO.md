@@ -21,7 +21,7 @@
 - [x] `internal/anomaly`: deviation detection logic
 - [x] `internal/anomaly`: `frequency_deviation` detection (sustained drop in checkin_frequency vs. baseline)
 - [x] Severity classification (magnitude in stddevs + duration in days)
-- [ ] Scheduled worker to recompute baselines daily
+- [x] Scheduled worker to recompute baselines daily
 
 ## Phase 4 — Notification Development
 
@@ -29,15 +29,15 @@
 - [ ] WebSocket live alerts (`internal/notification/websocket.go`)
 - [ ] Retry logic for undelivered notifications
 - [x] Multi-caregiver acknowledgment logic (ack-once, log who/when)
-- [ ] Family viewer: grant/revoke access, high-severity-only notify
+- [x] Family viewer: grant/revoke access, high-severity-only notify
 
 ## Phase 5 — Integration & Testing
 
-- [ ] Synthetic check-in data generator (`scripts/seed_synthetic_data.go`)
-- [ ] Inject known anomalies at controlled rate/magnitude
-- [ ] Measure recall (target ≥90%) and false-positive rate (target <10%)
-- [ ] Tune deviation thresholds against test results
-- [ ] End-to-end test: check-in → baseline update → anomaly → alert → ack
+- [x] Synthetic check-in data generator (`scripts/seed_synthetic_data.go`)
+- [x] Inject known anomalies at controlled rate/magnitude
+- [x] Measure recall (target ≥90%) and false-positive rate (target <10%)
+- [x] Tune deviation thresholds against test results
+- [x] End-to-end test: check-in → baseline update → anomaly → alert → ack
 
 ## Phase 6 — Evaluation & Refinement
 

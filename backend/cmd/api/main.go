@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"baselium/backend/internal/auth"
+	"baselium/backend/internal/admin"
 	"baselium/backend/internal/checkin"
 	"baselium/backend/internal/dashboard"
 	"baselium/backend/internal/db"
@@ -54,6 +55,7 @@ func main() {
 	checkinH := checkin.NewHandler(conn)
 	dashH := dashboard.NewHandler(conn)
 	familyH := family.NewHandler(conn)
+	adminH := admin.NewHandler(conn)
 	notifH := notification.NewHandler(conn)
 
 	mux := http.NewServeMux()
@@ -76,6 +78,10 @@ func main() {
 	mux.Handle("GET /api/notifications", auth.Require("caregiver")(http.HandlerFunc(notifH.List)))
 	mux.Handle("POST /api/notifications/ack", auth.Require("caregiver")(http.HandlerFunc(notifH.Ack)))
 	mux.Handle("POST /api/family/revoke", auth.Require("caregiver")(http.HandlerFunc(familyH.Revoke)))
+	mux.Handle("POST /api/family/grant", auth.Require("caregiver")(http.HandlerFunc(familyH.Grant)))
+	mux.Handle("GET /api/admin/overview", auth.Require("admin")(http.HandlerFunc(adminH.Overview)))
+	mux.Handle("GET /api/admin/accounts", auth.Require("admin")(http.HandlerFunc(adminH.Accounts)))
+	mux.Handle("POST /api/admin/assign", auth.Require("admin")(http.HandlerFunc(adminH.Assign)))
 
 	// family
 	mux.Handle("GET /api/family/status", auth.Require("family")(http.HandlerFunc(familyH.Status)))

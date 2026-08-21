@@ -45,7 +45,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Role != "elder" && req.Role != "caregiver" && req.Role != "family" {
-		writeErr(w, http.StatusBadRequest, "role must be elder, caregiver, or family")
+		writeErr(w, http.StatusBadRequest, "role must be elder, caregiver, or family; admin accounts are provisioned separately")
 		return
 	}
 
@@ -196,6 +196,8 @@ func resolveProfileID(db *sql.DB, accountID int, role string) (int, error) {
 		err = db.QueryRow(`SELECT caregiver_id FROM caregivers WHERE account_id = $1`, accountID).Scan(&id)
 	case "family":
 		err = db.QueryRow(`SELECT family_id FROM family_access WHERE account_id = $1`, accountID).Scan(&id)
+	case "admin":
+		err = db.QueryRow(`SELECT admin_id FROM admins WHERE account_id = $1`, accountID).Scan(&id)
 	}
 	return id, err
 }
