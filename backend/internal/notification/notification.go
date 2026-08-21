@@ -43,11 +43,17 @@ func DispatchForAnomaly(db *sql.DB, anomalyID, userID int, severity, anomalyType
 		}
 	}
 	for _, cgID := range caregiverIDs {
-		if _, err := db.Exec(
-			`INSERT INTO notifications (anomaly_id, caregiver_id, message) VALUES ($1, $2, $3)`,
+		result, err := db.Exec(
+			`INSERT INTO notifications (anomaly_id, caregiver_id, message)
+			 SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE anomaly_id = $1 AND caregiver_id = $2)`,
 			anomalyID, cgID, message,
-		); err != nil {
+		)
+		if err != nil {
 			return err
+		}
+		created, _ := result.RowsAffected()
+		if created == 0 {
+			continue
 		}
 		// stub push — see fcm.go / websocket.go
 		fmt.Printf("[push-stub] caregiver=%d anomaly=%d msg=%q\n", cgID, anomalyID, message)

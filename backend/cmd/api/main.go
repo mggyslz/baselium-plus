@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"os"
 
-	"baselium/backend/internal/auth"
 	"baselium/backend/internal/admin"
+	"baselium/backend/internal/auth"
 	"baselium/backend/internal/checkin"
 	"baselium/backend/internal/dashboard"
 	"baselium/backend/internal/db"
 	"baselium/backend/internal/family"
+	"baselium/backend/internal/healthnote"
 	"baselium/backend/internal/notification"
 )
 
@@ -55,6 +56,7 @@ func main() {
 	checkinH := checkin.NewHandler(conn)
 	dashH := dashboard.NewHandler(conn)
 	familyH := family.NewHandler(conn)
+	healthNoteH := healthnote.NewHandler(conn)
 	adminH := admin.NewHandler(conn)
 	notifH := notification.NewHandler(conn)
 
@@ -70,6 +72,8 @@ func main() {
 	// elder
 	mux.Handle("POST /api/checkins", auth.Require("elder")(http.HandlerFunc(checkinH.Submit)))
 	mux.Handle("GET /api/checkins", auth.Require("elder", "caregiver")(http.HandlerFunc(checkinH.History)))
+	mux.Handle("GET /api/health-notes", auth.Require("caregiver")(http.HandlerFunc(healthNoteH.List)))
+	mux.Handle("POST /api/health-notes", auth.Require("caregiver")(http.HandlerFunc(healthNoteH.Create)))
 
 	// caregiver
 	mux.Handle("GET /api/dashboard/triage", auth.Require("caregiver")(http.HandlerFunc(dashH.Triage)))
@@ -83,6 +87,8 @@ func main() {
 	mux.Handle("POST /api/caregiver/assign", auth.Require("caregiver")(http.HandlerFunc(familyH.Assign)))
 	mux.Handle("GET /api/admin/overview", auth.Require("admin")(http.HandlerFunc(adminH.Overview)))
 	mux.Handle("GET /api/admin/accounts", auth.Require("admin")(http.HandlerFunc(adminH.Accounts)))
+	mux.Handle("GET /api/admin/elders", auth.Require("admin")(http.HandlerFunc(adminH.Elders)))
+	mux.Handle("GET /api/admin/audit-logs", auth.Require("admin")(http.HandlerFunc(adminH.AuditLogs)))
 	mux.Handle("POST /api/admin/assign", auth.Require("admin")(http.HandlerFunc(adminH.Assign)))
 
 	// family

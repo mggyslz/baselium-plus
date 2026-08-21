@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"baselium/backend/internal/access"
 	"baselium/backend/internal/anomaly"
 	"baselium/backend/internal/auth"
 	"baselium/backend/internal/notification"
@@ -19,10 +20,10 @@ type Handler struct {
 func NewHandler(db *sql.DB) *Handler { return &Handler{DB: db} }
 
 type submitRequest struct {
-	Mood         int    `json:"mood"`
-	ActivityLevel int   `json:"activity_level"`
-	Notes        string `json:"notes,omitempty"`
-	ContextNote  string `json:"context_note,omitempty"`
+	Mood          int    `json:"mood"`
+	ActivityLevel int    `json:"activity_level"`
+	Notes         string `json:"notes,omitempty"`
+	ContextNote   string `json:"context_note,omitempty"`
 }
 
 // Submit records a daily check-in for the authenticated elder, then runs
@@ -102,6 +103,15 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userID = id
+		allowed, err := access.CaregiverHasElder(h.DB, claims.ProfileID, userID)
+		if err != nil {
+			http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+			return
+		}
+		if !allowed {
+			http.Error(w, `{"error":"elder is not assigned to you"}`, http.StatusForbidden)
+			return
+		}
 		h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'view_checkin', 'user', $2)`,
 			claims.AccountID, userID)
 	} else if claims.Role != "elder" {
@@ -119,13 +129,13 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type row struct {
-		CheckinID    int       `json:"checkin_id"`
-		CheckinTime  time.Time `json:"checkin_time"`
-		Mood         int       `json:"mood"`
-		ActivityLevel int      `json:"activity_level"`
-		Notes        *string   `json:"notes"`
-		ContextNote  *string   `json:"context_note"`
-		IsMissed     bool      `json:"is_missed"`
+		CheckinID     int       `json:"checkin_id"`
+		CheckinTime   time.Time `json:"checkin_time"`
+		Mood          int       `json:"mood"`
+		ActivityLevel int       `json:"activity_level"`
+		Notes         *string   `json:"notes"`
+		ContextNote   *string   `json:"context_note"`
+		IsMissed      bool      `json:"is_missed"`
 	}
 	var out []row
 	for rows.Next() {
@@ -143,5 +153,3 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
 }
-
-

@@ -9,8 +9,10 @@ import (
 	"os"
 	"time"
 
+	"baselium/backend/internal/anomaly"
 	"baselium/backend/internal/baseline"
 	"baselium/backend/internal/db"
+	"baselium/backend/internal/notification"
 )
 
 func env(key, fallback string) string {
@@ -60,6 +62,24 @@ func main() {
 			}
 			log.Printf("user %d: baseline recomputed (samples=%d cold_start=%v freq=%.2f)",
 				uid, b.SampleSize, b.IsColdStart, b.CheckinFrequency)
+			var lastCheckin time.Time
+			if err := conn.QueryRow(`SELECT MAX(checkin_time) FROM check_ins WHERE user_id = $1`, uid).Scan(&lastCheckin); err != nil || lastCheckin.IsZero() {
+				continue // do not alert before an elder has ever checked in
+			}
+			hoursSince := time.Since(lastCheckin).Hours()
+			if hoursSince <= 24 {
+				continue
+			}
+			a, err := anomaly.EnsureMissedCheckin(conn, uid, hoursSince)
+			if err != nil {
+				log.Printf("user %d: missed-checkin detection failed: %v", uid, err)
+				continue
+			}
+			if a != nil {
+				if err := notification.DispatchForAnomaly(conn, a.AnomalyID, uid, a.Severity, a.AnomalyType, a.Reason); err != nil {
+					log.Printf("user %d: missed-checkin dispatch failed: %v", uid, err)
+				}
+			}
 		}
 		log.Printf("done: %d elders processed", len(userIDs))
 	}

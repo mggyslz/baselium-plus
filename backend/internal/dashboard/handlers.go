@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
+	"baselium/backend/internal/access"
 	"baselium/backend/internal/auth"
 )
 
@@ -73,13 +75,16 @@ func (h *Handler) Triage(w http.ResponseWriter, r *http.Request) {
 // Trend returns raw check-in points plus the active baseline for charting.
 func (h *Handler) Trend(w http.ResponseWriter, r *http.Request) {
 	claims := auth.FromContext(r.Context())
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
+	userID, err := parseUserID(r)
+	if err != nil {
 		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
 		return
 	}
-	if claims.Role == "family" {
-		http.Error(w, `{"error":"family viewers cannot view detailed trends"}`, http.StatusForbidden) // D6
+	if claims.Role == "elder" && userID != claims.ProfileID {
+		http.Error(w, `{"error":"you can only view your own trend"}`, http.StatusForbidden)
+		return
+	}
+	if claims.Role == "caregiver" && !requireCaregiverElder(w, h.DB, claims.ProfileID, userID) {
 		return
 	}
 
@@ -112,11 +117,11 @@ func (h *Handler) Trend(w http.ResponseWriter, r *http.Request) {
 	).Scan(&avgMood, &avgActivity, &stddevMood, &stddevActivity)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"points":          points,
-		"baseline_mood":   avgMood.Float64,
+		"points":            points,
+		"baseline_mood":     avgMood.Float64,
 		"baseline_activity": avgActivity.Float64,
-		"stddev_mood":     stddevMood.Float64,
-		"stddev_activity": stddevActivity.Float64,
+		"stddev_mood":       stddevMood.Float64,
+		"stddev_activity":   stddevActivity.Float64,
 	})
 }
 
@@ -124,9 +129,15 @@ func (h *Handler) Trend(w http.ResponseWriter, r *http.Request) {
 // family: high-severity only, per D6).
 func (h *Handler) AlertHistory(w http.ResponseWriter, r *http.Request) {
 	claims := auth.FromContext(r.Context())
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
+	userID, err := parseUserID(r)
+	if err != nil {
 		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		return
+	}
+	if claims.Role == "caregiver" && !requireCaregiverElder(w, h.DB, claims.ProfileID, userID) {
+		return
+	}
+	if claims.Role == "family" && !requireFamilyElder(w, h.DB, claims.ProfileID, userID) {
 		return
 	}
 
@@ -163,6 +174,36 @@ func (h *Handler) AlertHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+func parseUserID(r *http.Request) (int, error) {
+	return strconv.Atoi(r.URL.Query().Get("user_id"))
+}
+
+func requireCaregiverElder(w http.ResponseWriter, db *sql.DB, caregiverID, userID int) bool {
+	allowed, err := access.CaregiverHasElder(db, caregiverID, userID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return false
+	}
+	if !allowed {
+		http.Error(w, `{"error":"elder is not assigned to you"}`, http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func requireFamilyElder(w http.ResponseWriter, db *sql.DB, familyID, userID int) bool {
+	allowed, err := access.FamilyHasElder(db, familyID, userID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return false
+	}
+	if !allowed {
+		http.Error(w, `{"error":"family access was not granted for this elder"}`, http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

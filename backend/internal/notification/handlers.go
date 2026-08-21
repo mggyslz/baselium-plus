@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"baselium/backend/internal/access"
 	"baselium/backend/internal/auth"
 )
 
@@ -31,6 +32,19 @@ func (h *Handler) Ack(w http.ResponseWriter, r *http.Request) {
 	var req ackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.AnomalyID < 1 {
+		http.Error(w, `{"error":"valid anomaly_id required"}`, http.StatusBadRequest)
+		return
+	}
+	allowed, err := access.CaregiverHasAnomaly(h.DB, claims.ProfileID, req.AnomalyID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, `{"error":"anomaly is not assigned to you"}`, http.StatusForbidden)
 		return
 	}
 	if err := Acknowledge(h.DB, req.AnomalyID, claims.ProfileID); err != nil {

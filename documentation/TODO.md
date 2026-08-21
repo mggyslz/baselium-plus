@@ -46,6 +46,9 @@
 - [x] Measure recall (target ≥90%) and false-positive rate (target <10%)
 - [x] Tune deviation thresholds against test results
 - [x] End-to-end test: check-in → baseline update → anomaly → alert → ack
+- [x] Protect elder records with caregiver/family assignment checks; prevent unauthorized alert acknowledgements
+- [x] Detect and dispatch missed-check-in alerts from the scheduled worker (one open alert per lapse)
+- [x] Suppress duplicate notifications for an existing anomaly
 
 ## Phase 6 — Evaluation & Refinement
 
@@ -58,5 +61,7 @@
 ## Backlog / Nice-to-have
 
 - [ ] Downloadable PDF/CSV activity reports
-- [ ] Health notes UI (caregiver manual entries)
-- [ ] Audit log viewer for admins
+- [x] Health notes UI: caregiver note composer and chronological note history in elder detail
+- [x] Health notes API: caregivers can create and list notes for assigned elders (`GET`/`POST /api/health-notes`)
+- [x] Audit log viewer for admins (read-only recent actions, search, refresh, and access audit trail)
+- [x] Admin Elder View: seven-day check-in statistics, open-alert counts, and active caregiver partnerships

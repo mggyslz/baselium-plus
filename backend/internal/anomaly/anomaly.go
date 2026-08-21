@@ -208,17 +208,52 @@ func RecordMissedCheckin(db *sql.DB, userID int, hoursSinceLast float64) (*Anoma
 	return a, nil
 }
 
+// EnsureMissedCheckin records one open missed-check-in anomaly per lapse.
+// The daily worker can call this safely without sending duplicate alerts.
+func EnsureMissedCheckin(db *sql.DB, userID int, hoursSinceLast float64) (*Anomaly, error) {
+	var existing int
+	err := db.QueryRow(`SELECT anomaly_id FROM anomalies WHERE user_id = $1 AND anomaly_type = 'missed_checkin' AND is_resolved = FALSE ORDER BY detected_at DESC LIMIT 1`, userID).Scan(&existing)
+	if err == nil {
+		return nil, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+	return RecordMissedCheckin(db, userID, hoursSinceLast)
+}
+
 func persist(db *sql.DB, a *Anomaly) error {
+	// One open anomaly represents one ongoing condition. Updating it preserves
+	// its history while preventing repeated worker/check-in executions from
+	// creating alert storms.
+	var existingID int
+	err := db.QueryRow(`SELECT anomaly_id FROM anomalies WHERE user_id = $1 AND anomaly_type = $2 AND is_resolved = FALSE ORDER BY detected_at DESC LIMIT 1`, a.UserID, a.AnomalyType).Scan(&existingID)
+	if err == nil {
+		_, err = db.Exec(`UPDATE anomalies SET baseline_id=$2, checkin_id=$3, severity=CASE WHEN $4='high' OR (severity='low' AND $4='medium') THEN $4 ELSE severity END, deviation_metric=$5, deviation_magnitude=GREATEST(COALESCE(deviation_magnitude, 0), $6), duration_days=GREATEST(duration_days, $7), detected_at=now() WHERE anomaly_id=$1`, existingID, nullableBaselineID(a.BaselineID), a.CheckinID, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays)
+		a.AnomalyID = existingID
+		return err
+	}
+	if err != sql.ErrNoRows {
+		return err
+	}
+
 	var baselineID interface{}
 	if a.BaselineID != 0 {
 		baselineID = a.BaselineID
 	}
-	err := db.QueryRow(
+	err = db.QueryRow(
 		`INSERT INTO anomalies (user_id, baseline_id, checkin_id, anomaly_type, severity, deviation_metric, deviation_magnitude, duration_days)
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING anomaly_id`,
 		a.UserID, baselineID, a.CheckinID, a.AnomalyType, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays,
 	).Scan(&a.AnomalyID)
 	return err
+}
+
+func nullableBaselineID(id int) interface{} {
+	if id == 0 {
+		return nil
+	}
+	return id
 }
 
 func round2(f float64) float64 { return math.Round(f*100) / 100 }

@@ -1,4 +1,4 @@
-import type { AdminAccount, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, Notification, Session, TriageItem, Trend } from "./types";
+import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, HealthNote, Notification, Session, TriageItem, Trend } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -33,4 +33,8 @@ export const api = {
   checkinHistory: (token: string, userId?: number) => request<Checkin[]>("/api/checkins", { token, params: userId ? { user_id: userId } : undefined }),
   triage: (token: string) => request<TriageItem[]>("/api/dashboard/triage", { token }), trend: (token: string, userId: number) => request<Trend>("/api/dashboard/trend", { token, params: { user_id: userId } }), alerts: (token: string, userId: number) => request<Alert[]>("/api/dashboard/alerts", { token, params: { user_id: userId } }), notifications: (token: string) => request<Notification[]>("/api/notifications", { token }),
   ackNotification: (token: string, anomalyId: number) => request<null>("/api/notifications/ack", { method: "POST", body: { anomaly_id: anomalyId }, token }), familyStatus: (token: string) => request<FamilyStatusData>("/api/family/status", { token }), revokeFamily: (token: string, familyId: number) => request<null>("/api/family/revoke", { method: "POST", body: { family_id: familyId }, token }), assignElder: (token: string, elderUserId: number) => request<null>("/api/caregiver/assign", { method: "POST", body: { elder_user_id: Number(elderUserId) }, token }), grantFamily: (token: string, payload: ApiPayload) => request<null>("/api/family/grant", { method: "POST", body: payload, token }), familyMembers: (token: string) => request<FamilyMember[]>("/api/family/members", { token }), adminOverview: (token: string) => request<AdminOverview>("/api/admin/overview", { token }), adminAccounts: (token: string) => request<AdminAccount[]>("/api/admin/accounts", { token }), adminAssign: (token: string, payload: ApiPayload) => request<null>("/api/admin/assign", { method: "POST", body: payload, token }),
+  healthNotes: (token: string, userId: number) => request<HealthNote[]>("/api/health-notes", { token, params: { user_id: userId } }),
+  createHealthNote: (token: string, userId: number, note: string) => request<{ note_id: number }>("/api/health-notes", { method: "POST", body: { user_id: userId, note }, token }),
+  adminAuditLogs: (token: string) => request<AdminAuditLog[]>("/api/admin/audit-logs", { token }),
+  adminElders: (token: string) => request<AdminElder[]>("/api/admin/elders", { token }),
 };

@@ -34,6 +34,29 @@ describe("api.request", () => {
     expect(url).toContain("user_id=42");
   });
 
+  it("loads health notes for the selected elder", async () => {
+    mockFetch(200, []);
+    await api.healthNotes("t", 42);
+    const url = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(url).toContain("/api/health-notes?user_id=42");
+  });
+
+  it("loads audit logs with administrator credentials", async () => {
+    mockFetch(200, []);
+    await api.adminAuditLogs("admin-token");
+    const [url, init] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:8080/api/admin/audit-logs");
+    expect(init.headers).toMatchObject({ Authorization: "Bearer admin-token" });
+  });
+
+  it("loads elder statistics for administrators", async () => {
+    mockFetch(200, []);
+    await api.adminElders("admin-token");
+    const [url, init] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:8080/api/admin/elders");
+    expect(init.headers).toMatchObject({ Authorization: "Bearer admin-token" });
+  });
+
   it("returns null on a 204", async () => {
     mockFetch(204, "");
     const result = await api.revokeFamily("t", 5);

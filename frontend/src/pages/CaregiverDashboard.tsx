@@ -7,6 +7,70 @@ function SeverityBadge({ severity }) {
   return <span className={`severity ${severity}`}>{severity}</span>;
 }
 
+function HealthNotes({ userId, token }) {
+  const [notes, setNotes] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function loadNotes() {
+    try {
+      setError("");
+      setNotes((await api.healthNotes(token, userId)) || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  useEffect(() => { loadNotes(); }, [token, userId]);
+
+  async function saveNote(e) {
+    e.preventDefault();
+    const note = draft.trim();
+    if (!note) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      await api.createHealthNote(token, userId, note);
+      setDraft("");
+      await loadNotes();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="card health-notes-card">
+      <div className="spread notes-heading">
+        <div>
+          <h2>Health notes</h2>
+          <p className="muted">Care team observations are visible to caregivers assigned to this elder.</p>
+        </div>
+        <span className="notes-count">{notes.length} {notes.length === 1 ? "note" : "notes"}</span>
+      </div>
+      <form className="health-note-form" onSubmit={saveNote}>
+        <label htmlFor="health-note">Add a caregiver note</label>
+        <textarea id="health-note" rows={4} maxLength={2000} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Record an observation, care update, or follow-up action…" />
+        <div className="note-form-footer">
+          <span className="muted">{draft.length}/2000</span>
+          <button type="submit" disabled={isSaving || !draft.trim()}>{isSaving ? "Saving…" : "Save note"}</button>
+        </div>
+      </form>
+      {error && <div className="error">{error}</div>}
+      <div className="notes-list" aria-live="polite">
+        {notes.length === 0 ? <div className="empty-state">No health notes yet. Add the first care observation above.</div> : notes.map((note) => (
+          <article className="health-note" key={note.note_id}>
+            <div className="spread"><strong>{note.caregiver_name}</strong><time className="muted" dateTime={note.created_at}>{new Date(note.created_at).toLocaleString()}</time></div>
+            <p>{note.note_text}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ElderDetail({ userId, onBack, token }) {
   const [trend, setTrend] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -94,6 +158,8 @@ function ElderDetail({ userId, onBack, token }) {
           </table>
         )}
       </div>
+
+      <HealthNotes userId={userId} token={token} />
     </div>
   );
 }
