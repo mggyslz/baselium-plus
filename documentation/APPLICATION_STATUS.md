@@ -42,6 +42,10 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
   and alert history.
 - **Notifications** tab: recent alerts with unread count.
 - Acknowledge alerts (`POST /api/notifications/ack`).
+- **Access** tab: assign elders to self (`POST /api/caregiver/assign`),
+  grant family-viewer access (`POST /api/family/grant`), revoke access
+  (`POST /api/family/revoke`), and list granted family members
+  (`GET /api/family/members`).
 - Only shows elders linked via the `user_caregiver` join table.
 
 ### Family Viewer ✅
@@ -69,8 +73,6 @@ All 9 tables from `backend/migrations/0001_init.sql` applied:
 ---
 
 ## Known gaps / not yet done
-- Caregivers can assign elders and create family-viewer access from the dashboard’s
-  **Access management** tab (with protected APIs behind it).
 - Notifications are stored in DB but **WebSocket / FCM push delivery is not wired**.
 - Mobile React Native check-in app (from the proposal) not present in this repo.
 - Cosmetic bug: elder check-in heading renders an empty name

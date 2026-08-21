@@ -79,6 +79,8 @@ func main() {
 	mux.Handle("POST /api/notifications/ack", auth.Require("caregiver")(http.HandlerFunc(notifH.Ack)))
 	mux.Handle("POST /api/family/revoke", auth.Require("caregiver")(http.HandlerFunc(familyH.Revoke)))
 	mux.Handle("POST /api/family/grant", auth.Require("caregiver")(http.HandlerFunc(familyH.Grant)))
+	mux.Handle("GET /api/family/members", auth.Require("caregiver")(http.HandlerFunc(familyH.Members)))
+	mux.Handle("POST /api/caregiver/assign", auth.Require("caregiver")(http.HandlerFunc(familyH.Assign)))
 	mux.Handle("GET /api/admin/overview", auth.Require("admin")(http.HandlerFunc(adminH.Overview)))
 	mux.Handle("GET /api/admin/accounts", auth.Require("admin")(http.HandlerFunc(adminH.Accounts)))
 	mux.Handle("POST /api/admin/assign", auth.Require("admin")(http.HandlerFunc(adminH.Assign)))

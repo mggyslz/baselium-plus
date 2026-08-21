@@ -98,6 +98,155 @@ function ElderDetail({ userId, onBack, token }) {
   );
 }
 
+function AccessManagement({ token }) {
+  const [assignForm, setAssignForm] = useState({ elder_user_id: "" });
+  const [grantForm, setGrantForm] = useState({ elder_user_id: "", full_name: "", relationship: "", email: "", password: "" });
+  const [members, setMembers] = useState([]);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [granting, setGranting] = useState(false);
+
+  async function loadMembers() {
+    try {
+      setMembers((await api.familyMembers(token)) || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  useEffect(() => { loadMembers(); }, [token]);
+
+  async function assign(e) {
+    e.preventDefault();
+    setError(""); setSuccess(""); setAssigning(true);
+    try {
+      await api.assignElder(token, Number(assignForm.elder_user_id));
+      setSuccess("Elder assigned successfully.");
+      setAssignForm({ elder_user_id: "" });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function grant(e) {
+    e.preventDefault();
+    setError(""); setSuccess(""); setGranting(true);
+    try {
+      await api.grantFamily(token, {
+        elder_user_id: Number(grantForm.elder_user_id),
+        full_name: grantForm.full_name,
+        relationship: grantForm.relationship,
+        email: grantForm.email,
+        password: grantForm.password,
+      });
+      setSuccess("Family access granted.");
+      setGrantForm({ elder_user_id: "", full_name: "", relationship: "", email: "", password: "" });
+      loadMembers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGranting(false);
+    }
+  }
+
+  async function revoke(familyId) {
+    setError(""); setSuccess("");
+    try {
+      await api.revokeFamily(token, familyId);
+      setSuccess("Access revoked.");
+      loadMembers();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <div>
+      <div className="management-grid">
+        <div className="card">
+          <h2>Assign an elder to yourself</h2>
+          <form className="stack" onSubmit={assign}>
+            <div>
+              <label>Elder user ID</label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={assignForm.elder_user_id}
+                onChange={(e) => setAssignForm({ ...assignForm, elder_user_id: e.target.value })}
+              />
+            </div>
+            <button disabled={assigning}>{assigning ? "Assigning…" : "Assign elder"}</button>
+          </form>
+        </div>
+
+        <div className="card">
+          <h2>Grant family access</h2>
+          <form className="stack" onSubmit={grant}>
+            <div>
+              <label>Elder user ID</label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={grantForm.elder_user_id}
+                onChange={(e) => setGrantForm({ ...grantForm, elder_user_id: e.target.value })}
+              />
+            </div>
+            <div>
+              <label>Family member's full name</label>
+              <input required value={grantForm.full_name} onChange={(e) => setGrantForm({ ...grantForm, full_name: e.target.value })} />
+            </div>
+            <div>
+              <label>Relationship to elder</label>
+              <input value={grantForm.relationship} onChange={(e) => setGrantForm({ ...grantForm, relationship: e.target.value })} placeholder="e.g. daughter" />
+            </div>
+            <div>
+              <label>Email (login)</label>
+              <input type="email" required value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} />
+            </div>
+            <div>
+              <label>Password (min 8 characters)</label>
+              <input type="password" required minLength={8} value={grantForm.password} onChange={(e) => setGrantForm({ ...grantForm, password: e.target.value })} />
+            </div>
+            <button type="submit" disabled={granting}>{granting ? "Granting…" : "Grant access"}</button>
+          </form>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Family members you've granted access</h2>
+        {members.length === 0 && <div className="empty-state">You haven't granted family access yet. Family members can be added with the form above.</div>}
+        {members.length > 0 && (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Relationship</th><th>Email</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody>
+                {members.map((m) => (
+                  <tr key={m.id}>
+                    <td>{m.full_name}</td>
+                    <td className="muted">{m.relationship || "—"}</td>
+                    <td className="muted">{m.email}</td>
+                    <td>{m.is_active ? <span style={{ color: "var(--ok)" }}>Active</span> : <span className="muted">Revoked</span>}</td>
+                    <td>{m.is_active && <button className="secondary" onClick={() => revoke(m.id)}>Revoke</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {error && <div className="error">{error}</div>}
+      {success && <div className="success">{success}</div>}
+    </div>
+  );
+}
+
 export default function CaregiverDashboard() {
   const { session } = useAuth();
   const [tab, setTab] = useState("triage");
@@ -144,6 +293,7 @@ export default function CaregiverDashboard() {
         <button className={tab === "notifications" ? "active" : ""} onClick={() => setTab("notifications")}>
           Notifications {notifications.filter((n) => !n.IsRead).length > 0 && `(${notifications.filter((n) => !n.IsRead).length})`}
         </button>
+        <button className={tab === "access" ? "active" : ""} onClick={() => setTab("access")}>Access</button>
       </div>
       {error && <div className="error">{error}</div>}
 
@@ -192,6 +342,8 @@ export default function CaregiverDashboard() {
           )}
         </div>
       )}
+
+      {tab === "access" && <AccessManagement token={session.token} />}
     </div>
   );
 }

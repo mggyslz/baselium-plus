@@ -140,6 +140,40 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type membersRow struct {
+	ID           int    `json:"id"`
+	FullName     string `json:"full_name"`
+	Relationship string `json:"relationship"`
+	Email        string `json:"email"`
+	IsActive     bool   `json:"is_active"`
+}
+
+// Members lists the family accounts this caller has granted access to.
+func (h *Handler) Members(w http.ResponseWriter, r *http.Request) {
+	claims := auth.FromContext(r.Context())
+	rows, err := h.DB.Query(`
+		SELECT fa.family_id, fa.full_name, fa.relationship, a.email, fa.is_active
+		FROM family_access fa
+		JOIN accounts a ON a.account_id = fa.account_id
+		WHERE fa.granted_by = $1
+		ORDER BY fa.created_at DESC
+	`, claims.ProfileID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var out []membersRow
+	for rows.Next() {
+		var m membersRow
+		if rows.Scan(&m.ID, &m.FullName, &m.Relationship, &m.Email, &m.IsActive) == nil {
+			out = append(out, m)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

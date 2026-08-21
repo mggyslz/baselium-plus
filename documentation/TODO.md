@@ -1,3 +1,8 @@
+# TODO.md
+
+> Planned work by phase. Checked = implemented in the current working state (last updated after the caregiver
+> **Access management** tab shipped).
+
 ## Phase 1 — Requirements & System Design ✅ (mostly done via proposal)
 
 - [x] Objectives, functional/non-functional requirements
@@ -9,9 +14,10 @@
 - [x] Set up Go project skeleton (`cmd/api`, `internal/*`)
 - [x] Set up Postgres + run initial migration from ERD
 - [ ] `sqlc` config + generate types from `accounts`, `users`, `caregivers`, `family_access`, `user_caregiver`
+      (not adopted — DB access uses a `db` helper + raw SQL; either adopt sqlc or consciously close this item)
 - [x] Auth: signup/login, JWT issuing, role middleware
 - [x] Check-in submission endpoint (mood, activity, context note)
-- [x] Basic caregiver dashboard shell (React) — auth + routing only
+- [x] Caregiver dashboard shell (React) — role-routed with triage, elder detail (trend chart + alert history), notifications tab
 
 ## Phase 3 — Behavioral Intelligence Development
 
@@ -29,7 +35,9 @@
 - [ ] WebSocket live alerts (`internal/notification/websocket.go`)
 - [ ] Retry logic for undelivered notifications
 - [x] Multi-caregiver acknowledgment logic (ack-once, log who/when)
-- [x] Family viewer: grant/revoke access, high-severity-only notify
+- [x] Family viewer: high-severity-only notify
+- [x] Caregiver **Access** tab — assign elders to self, grant family access, revoke access, list granted family
+      (backend `GET /api/family/members` + `POST /api/caregiver/assign`; UI in `CaregiverDashboard.jsx`)
 
 ## Phase 5 — Integration & Testing
 

@@ -37,6 +37,7 @@ export const api = {
   revokeFamily: (token, familyId) => request("/api/family/revoke", { method: "POST", body: { family_id: familyId }, token }),
   assignElder: (token, elderUserId) => request("/api/caregiver/assign", { method: "POST", body: { elder_user_id: Number(elderUserId) }, token }),
   grantFamily: (token, payload) => request("/api/family/grant", { method: "POST", body: payload, token }),
+  familyMembers: (token) => request("/api/family/members", { token }),
   adminOverview: (token) => request("/api/admin/overview", { token }),
   adminAccounts: (token) => request("/api/admin/accounts", { token }),
   adminAssign: (token, payload) => request("/api/admin/assign", { method: "POST", body: payload, token }),
