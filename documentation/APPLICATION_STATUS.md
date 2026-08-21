@@ -20,6 +20,12 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
 
 ## What's implemented
 
+### Testing (frontend) ✅
+- Unit tests for the API client (`src/__tests__/api.test.ts`) and component
+  tests for the caregiver **Access** tab (`src/__tests__/CaregiverDashboard.test.tsx`).
+- Runner: **Vitest** + React Testing Library, jsdom env, run with `npm test`
+  from `frontend/`. See [`TESTING.md`](./TESTING.md).
+
 ### Authentication & Accounts ✅
 - Signup / login with role selection (`elder`, `caregiver`, `family`).
 - JWT-based auth (HMAC-SHA256, role embedded in claims), ~24h expiry.

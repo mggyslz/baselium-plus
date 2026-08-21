@@ -12,6 +12,22 @@ This covers baseline arithmetic, severity boundaries, frequency severity, and a 
 
 The deterministic calibration data produced 100% recall for 20 injected extreme (1/5) mood deviations and a 0% false-positive rate for 100 normal 3-5 samples around a 4/5 baseline. This meets the current provisional targets (at least 90% recall and below 10% false positives). It is a regression check, not a substitute for a larger real-user study.
 
+## Frontend tests (Vitest + React Testing Library)
+
+From `frontend`:
+
+```powershell
+npm test            # run once (vitest run)
+npm run test:watch  # watch mode
+```
+
+Test files live in `frontend/src/__tests__/` and are included automatically via `vite.config.js`:
+
+- `api.test.ts` — unit tests for the API client (`request` helper): URL/query building, auth header, JSON POST body, 204 → `null`, and error mapping. Uses a mocked `global.fetch`, no network.
+- `CaregiverDashboard.test.tsx` — component tests for the `AccessManagement` tab: listing family members, empty state, assign / grant / revoke flows, and the error path. Uses `vi.spyOn` on the `api` module.
+
+Config: `vite.config.js` sets the jsdom environment, a setup file (`src/test/setup.ts`) that registers jest-dom matchers and per-test cleanup, and `globals: false` (tests import from `vitest` explicitly).
+
 ## End-to-end database test
 
 Use a disposable PostgreSQL database with the migration already applied:

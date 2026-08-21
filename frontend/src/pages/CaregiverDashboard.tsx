@@ -98,7 +98,7 @@ function ElderDetail({ userId, onBack, token }) {
   );
 }
 
-function AccessManagement({ token }) {
+export function AccessManagement({ token }) {
   const [assignForm, setAssignForm] = useState({ elder_user_id: "" });
   const [grantForm, setGrantForm] = useState({ elder_user_id: "", full_name: "", relationship: "", email: "", password: "" });
   const [members, setMembers] = useState([]);
@@ -175,6 +175,7 @@ function AccessManagement({ token }) {
                 type="number"
                 min="1"
                 required
+                aria-label="Elder user ID to assign"
                 value={assignForm.elder_user_id}
                 onChange={(e) => setAssignForm({ ...assignForm, elder_user_id: e.target.value })}
               />
@@ -192,25 +193,26 @@ function AccessManagement({ token }) {
                 type="number"
                 min="1"
                 required
+                aria-label="Elder user ID for grant access"
                 value={grantForm.elder_user_id}
                 onChange={(e) => setGrantForm({ ...grantForm, elder_user_id: e.target.value })}
               />
             </div>
             <div>
               <label>Family member's full name</label>
-              <input required value={grantForm.full_name} onChange={(e) => setGrantForm({ ...grantForm, full_name: e.target.value })} />
+              <input required aria-label="Family member's full name" value={grantForm.full_name} onChange={(e) => setGrantForm({ ...grantForm, full_name: e.target.value })} />
             </div>
             <div>
               <label>Relationship to elder</label>
-              <input value={grantForm.relationship} onChange={(e) => setGrantForm({ ...grantForm, relationship: e.target.value })} placeholder="e.g. daughter" />
+              <input aria-label="Relationship to elder" value={grantForm.relationship} onChange={(e) => setGrantForm({ ...grantForm, relationship: e.target.value })} placeholder="e.g. daughter" />
             </div>
             <div>
               <label>Email (login)</label>
-              <input type="email" required value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} />
+              <input type="email" required aria-label="Email (login)" value={grantForm.email} onChange={(e) => setGrantForm({ ...grantForm, email: e.target.value })} />
             </div>
             <div>
               <label>Password (min 8 characters)</label>
-              <input type="password" required minLength={8} value={grantForm.password} onChange={(e) => setGrantForm({ ...grantForm, password: e.target.value })} />
+              <input type="password" required minLength={8} aria-label="Password (min 8 characters)" value={grantForm.password} onChange={(e) => setGrantForm({ ...grantForm, password: e.target.value })} />
             </div>
             <button type="submit" disabled={granting}>{granting ? "Granting…" : "Grant access"}</button>
           </form>
