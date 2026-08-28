@@ -1,10 +1,16 @@
 package dashboard
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"hash/crc32"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"baselium/backend/internal/access"
@@ -174,6 +180,206 @@ func (h *Handler) AlertHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// ExportReport creates a portable Excel workbook with the assigned elder's
+// check-in history, anomaly history, and a small summary sheet.
+func (h *Handler) ExportReport(w http.ResponseWriter, r *http.Request) {
+	claims := auth.FromContext(r.Context())
+	userID, err := parseUserID(r)
+	if err != nil {
+		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		return
+	}
+	if !requireCaregiverElder(w, h.DB, claims.ProfileID, userID) {
+		return
+	}
+
+	var name string
+	if err := h.DB.QueryRow(`SELECT full_name FROM users WHERE user_id = $1`, userID).Scan(&name); err != nil {
+		http.Error(w, `{"error":"elder not found"}`, http.StatusNotFound)
+		return
+	}
+	checkins, err := h.reportCheckins(userID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	alerts, err := h.reportAlerts(userID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	data, err := makeWorkbook(name, checkins, alerts)
+	if err != nil {
+		http.Error(w, `{"error":"report generation failed"}`, http.StatusInternalServerError)
+		return
+	}
+	h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'export_report', 'user', $2)`, claims.AccountID, userID)
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="baselium-report-%d.xlsx"`, userID))
+	w.Write(data)
+}
+
+type reportCheckin struct {
+	Time           time.Time
+	Mood, Activity int
+	Notes          string
+}
+type reportAlert struct {
+	Detected               time.Time
+	Type, Severity, Metric string
+	Magnitude              float64
+	Duration               int
+	Resolved               bool
+}
+
+func (h *Handler) reportCheckins(userID int) ([]reportCheckin, error) {
+	rows, err := h.DB.Query(`SELECT checkin_time, mood, activity_level, COALESCE(notes, context_note, '') FROM check_ins WHERE user_id=$1 ORDER BY checkin_time DESC LIMIT 365`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []reportCheckin
+	for rows.Next() {
+		var v reportCheckin
+		if err := rows.Scan(&v.Time, &v.Mood, &v.Activity, &v.Notes); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+func (h *Handler) reportAlerts(userID int) ([]reportAlert, error) {
+	rows, err := h.DB.Query(`SELECT detected_at, anomaly_type, severity, COALESCE(deviation_metric, ''), COALESCE(deviation_magnitude, 0), duration_days, is_resolved FROM anomalies WHERE user_id=$1 ORDER BY detected_at DESC LIMIT 365`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []reportAlert
+	for rows.Next() {
+		var v reportAlert
+		if err := rows.Scan(&v.Detected, &v.Type, &v.Severity, &v.Metric, &v.Magnitude, &v.Duration, &v.Resolved); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+func makeWorkbook(name string, checkins []reportCheckin, alerts []reportAlert) ([]byte, error) {
+	sheets := [][][]string{
+		{{"Report for " + name}, {"Generated " + time.Now().Format(time.RFC3339)}, {"Check-ins", strconv.Itoa(len(checkins))}, {"Alerts", strconv.Itoa(len(alerts))}},
+		{{"Check-ins", "Mood", "Activity", "Notes"}},
+		{{"Alerts", "Severity", "Metric", "Magnitude", "Duration days", "Status"}},
+	}
+	for _, v := range checkins {
+		sheets[1] = append(sheets[1], []string{v.Time.Format(time.RFC3339), strconv.Itoa(v.Mood), strconv.Itoa(v.Activity), v.Notes})
+	}
+	for _, v := range alerts {
+		status := "Open"
+		if v.Resolved {
+			status = "Acknowledged"
+		}
+		sheets[2] = append(sheets[2], []string{v.Detected.Format(time.RFC3339), v.Severity, v.Metric, fmt.Sprintf("%.2f", v.Magnitude), strconv.Itoa(v.Duration), status})
+	}
+	files := map[string]string{
+		"[Content_Types].xml":        `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+		"_rels/.rels":                `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+		"xl/workbook.xml":            `<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Summary" sheetId="1" r:id="rId1"/><sheet name="Check-ins" sheetId="2" r:id="rId2"/><sheet name="Alerts" sheetId="3" r:id="rId3"/></sheets></workbook>`,
+		"xl/_rels/workbook.xml.rels": `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/></Relationships>`,
+	}
+	entries := make([]xlsxEntry, 0, len(files)+3)
+	for path, content := range files {
+		entries = append(entries, xlsxEntry{name: path, data: []byte(content)})
+	}
+	for i, rows := range sheets {
+		entries = append(entries, xlsxEntry{name: fmt.Sprintf("xl/worksheets/sheet%d.xml", i+1), data: []byte(sheetXML(rows))})
+	}
+	return writeStoredZip(entries), nil
+}
+
+type xlsxEntry struct {
+	name   string
+	data   []byte
+	offset uint32
+}
+
+// writeStoredZip writes the minimal ZIP container needed by .xlsx files.
+// Entries are intentionally stored rather than compressed to avoid an external
+// dependency and keep export deterministic.
+func writeStoredZip(entries []xlsxEntry) []byte {
+	var out bytes.Buffer
+	for i := range entries {
+		e := &entries[i]
+		e.offset = uint32(out.Len())
+		name := []byte(e.name)
+		crc := crc32.ChecksumIEEE(e.data)
+		binary.Write(&out, binary.LittleEndian, uint32(0x04034b50))
+		binary.Write(&out, binary.LittleEndian, uint16(20))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, crc)
+		binary.Write(&out, binary.LittleEndian, uint32(len(e.data)))
+		binary.Write(&out, binary.LittleEndian, uint32(len(e.data)))
+		binary.Write(&out, binary.LittleEndian, uint16(len(name)))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		out.Write(name)
+		out.Write(e.data)
+	}
+	centralStart := uint32(out.Len())
+	for _, e := range entries {
+		name := []byte(e.name)
+		crc := crc32.ChecksumIEEE(e.data)
+		binary.Write(&out, binary.LittleEndian, uint32(0x02014b50))
+		binary.Write(&out, binary.LittleEndian, uint16(20))
+		binary.Write(&out, binary.LittleEndian, uint16(20))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, crc)
+		binary.Write(&out, binary.LittleEndian, uint32(len(e.data)))
+		binary.Write(&out, binary.LittleEndian, uint32(len(e.data)))
+		binary.Write(&out, binary.LittleEndian, uint16(len(name)))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint16(0))
+		binary.Write(&out, binary.LittleEndian, uint32(0))
+		binary.Write(&out, binary.LittleEndian, e.offset)
+		out.Write(name)
+	}
+	centralSize := uint32(out.Len()) - centralStart
+	count := uint16(len(entries))
+	binary.Write(&out, binary.LittleEndian, uint32(0x06054b50))
+	binary.Write(&out, binary.LittleEndian, uint16(0))
+	binary.Write(&out, binary.LittleEndian, uint16(0))
+	binary.Write(&out, binary.LittleEndian, count)
+	binary.Write(&out, binary.LittleEndian, count)
+	binary.Write(&out, binary.LittleEndian, centralSize)
+	binary.Write(&out, binary.LittleEndian, centralStart)
+	binary.Write(&out, binary.LittleEndian, uint16(0))
+	return out.Bytes()
+}
+func sheetXML(rows [][]string) string {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>`)
+	for i, row := range rows {
+		b.WriteString(fmt.Sprintf(`<row r="%d">`, i+1))
+		for _, value := range row {
+			b.WriteString(`<c t="inlineStr"><is><t>`)
+			var escaped bytes.Buffer
+			xml.EscapeText(&escaped, []byte(value))
+			b.WriteString(escaped.String())
+			b.WriteString(`</t></is></c>`)
+		}
+		b.WriteString(`</row>`)
+	}
+	b.WriteString(`</sheetData></worksheet>`)
+	return b.String()
 }
 
 func parseUserID(r *http.Request) (int, error) {

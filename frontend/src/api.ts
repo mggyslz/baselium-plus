@@ -37,4 +37,9 @@ export const api = {
   createHealthNote: (token: string, userId: number, note: string) => request<{ note_id: number }>("/api/health-notes", { method: "POST", body: { user_id: userId, note }, token }),
   adminAuditLogs: (token: string) => request<AdminAuditLog[]>("/api/admin/audit-logs", { token }),
   adminElders: (token: string) => request<AdminElder[]>("/api/admin/elders", { token }),
+  downloadReport: async (token: string, userId: number) => {
+    const res = await fetch(`${BASE_URL}/api/dashboard/report?user_id=${userId}`, { headers: { Authorization: "Bearer " + token } });
+    if (!res.ok) throw new Error("Unable to download report");
+    return res.blob();
+  },
 };

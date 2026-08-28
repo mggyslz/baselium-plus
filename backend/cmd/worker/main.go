@@ -11,6 +11,7 @@ import (
 
 	"baselium/backend/internal/anomaly"
 	"baselium/backend/internal/baseline"
+	"baselium/backend/internal/config"
 	"baselium/backend/internal/db"
 	"baselium/backend/internal/notification"
 )
@@ -23,6 +24,9 @@ func env(key, fallback string) string {
 }
 
 func main() {
+	if err := config.LoadDotEnv(); err != nil {
+		log.Fatalf("load .env: %v", err)
+	}
 	once := flag.Bool("once", false, "run once and exit (useful for manual runs and cron)")
 	interval := flag.Duration("interval", 24*time.Hour, "time between baseline recomputations")
 	flag.Parse()

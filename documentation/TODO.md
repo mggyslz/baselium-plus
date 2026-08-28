@@ -53,21 +53,22 @@
 
 ## Phase 6 — Evaluation & Refinement
 
-- [ ] Review against functional/non-functional requirements
-- [ ] Refine thresholds based on final test data
-- [ ] Polish dashboard (trend charts and triage view are implemented; Excel export remains)
-- [ ] Audit log review for Data Privacy Act compliance (see D15 — audit-log viewing itself is
-      intentionally not logged)
-- [ ] Prep for final defense
+- [x] Review against functional/non-functional requirements — see `EVALUATION.md`.
+- [x] Refine thresholds based on deterministic synthetic test data — 100% recall for 20 injected
+      extreme deviations and 0% false positives for 100 normal samples; real-user validation remains a limitation.
+- [x] Polish dashboard — trend charts, triage view, and caregiver-authorized Excel activity reports.
+- [x] Audit log review for Data Privacy Act compliance — access, check-in, alert, health-note, report,
+      and admin-view actions are logged; deployment security requirements are documented in `EVALUATION.md`.
+- [x] Prep for final defense — evidence and demonstration checklist are in `EVALUATION.md`.
 
 ## Bugs
 
-- [ ] Elder check-in heading renders an empty name (`frontend/src/pages/ElderCheckin.jsx`)
+- [x] Elder check-in heading no longer renders an empty name.
 
 ## Backlog / Nice-to-have
 
-- [ ] Downloadable Excel (.xlsx) activity reports — server-side export (check-in history, alert
-      log, summary sheet), reusing existing trend/alert queries (see D14 — PDF/CSV not adopted)
+- [x] Downloadable Excel (.xlsx) activity reports — caregiver-authorized server-side export with
+      check-in history, alert log, and summary sheet (see D14 — PDF/CSV not adopted)
 - [x] Health notes UI: caregiver note composer and chronological note history in elder detail
 - [x] Health notes API: caregivers can create and list notes for assigned elders (`GET`/`POST /api/health-notes`)
 - [x] Audit log viewer for admins (read-only recent actions, search, refresh, and access audit trail)
@@ -100,8 +101,6 @@
 ### Security / reliability (RA 10173 + 5-minute alert SLA)
 - [ ] JWT refresh/rotation instead of a flat ~24h expiry with no refresh token
 - [ ] Login rate limiting / attempt throttling
-- [x] Audit log the *viewing* of audit logs by admins, or explicitly document in
-      DECISIONS.md that this is intentionally not logged — documented as intentionally
-      not logged (see D15)
+- [x] Audit log the viewing of audit logs by admins (see D15)
 - [ ] Log failed notification delivery attempts to a table (not just silent retry),
       so the 5-minute alert SLA can be demonstrated with real data during the defense

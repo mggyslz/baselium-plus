@@ -61,16 +61,15 @@
 - Only one `behavioral_baselines` row per elder should be `is_active = true` at a time.
 
 ## Current Implementation
-> Update this section as code is written — nothing implemented yet as of this doc's creation.
-- [ ] Database schema (see `DECISIONS.md` for ERD source of truth)
-- [ ] Auth (JWT + roles)
-- [ ] Check-in submission endpoint
-- [ ] Baseline computation worker
-- [ ] Anomaly detector
-- [ ] Notification dispatch (FCM + WebSocket)
-- [ ] Caregiver dashboard (React)
-- [ ] Family viewer read-only view
-- [ ] Mobile check-in app (React Native)
+- [x] Database schema (see `DECISIONS.md` for ERD source of truth)
+- [x] Auth (JWT + roles)
+- [x] Check-in submission endpoint
+- [x] Baseline computation worker
+- [x] Anomaly detector
+- [x] Notification dispatch (WebSocket; FCM intentionally deferred per D13)
+- [x] Caregiver dashboard (React), including Excel report export
+- [x] Family viewer read-only view
+- [ ] Mobile React Native check-in app (the responsive web check-in screen is available instead)
 
 ## Known Problems
 > Log issues here as they come up during development.

@@ -57,12 +57,12 @@ Record of *why*, not just *what*. Add a new entry whenever a meaningful architec
 **Why:** The proposal's real-time requirement is caregivers seeing alerts while actively using the dashboard, which is exactly what a persistent WebSocket connection is for — the server pushes the instant an anomaly is flagged, with no external dependency. FCM's value is reaching a caregiver when the app is closed (lock-screen/background push), which is a real feature but isn't what the proposal commits to, and it adds real setup cost (Firebase project, device token management, platform-specific config) that isn't justified yet. FCM remains a reasonable future-work item if background push becomes a requirement. Trade-off: a caregiver who has fully closed the app gets no alert until they reopen it; this is acceptable for the current scope since the 5-minute SLA is measured against active dashboard sessions.
 
 ### D14 — Report export: Excel only, no PDF/CSV
-**Decision:** Downloadable activity reports are exported as `.xlsx` (via a server-side Go Excel library), not PDF or CSV.
+**Decision:** Downloadable activity reports are exported as standards-compliant `.xlsx` workbooks generated server-side, not PDF or CSV.
 **Why:** Excel is more useful to caregivers than CSV (native formatting, multiple sheets, no separate viewer needed) and is simpler to generate correctly than PDF for tabular trend/alert data (no layout/pagination work). Generating server-side reuses the same trend and alert-history queries already powering the dashboard, so this is a new renderer, not new data modeling. Trade-off: a caregiver who wants a single print-ready page (e.g., to hand to a doctor) doesn't get one — PDF export is left as a possible future addition if that need comes up.
 
-### D15 — Audit-log viewing is not itself logged
-**Decision:** Admin *viewing* of the audit log viewer is not written back into `audit_logs`. Only the underlying account/data actions (e.g., account changes, caregiver-elder assignment, access grants/revocations) are audited.
-**Why:** RA 10173 compliance concerns actions taken on personal data, not read access to an already-restricted admin-only audit trail. Logging every audit-log view would add write volume without a corresponding accountability benefit, and risks recursive noise (viewing the log becomes an entry that itself could be viewed). This is a conscious scope decision, not an oversight — if a future requirement demands admin-access auditing specifically, it can be added as a distinct `admin_audit_log` table rather than folded into `audit_logs`.
+### D15 — Audit-log viewing is logged
+**Decision:** Viewing the audit-log viewer and admin elder statistics writes an audit entry.
+**Why:** These screens expose personal and security-relevant operational data. Recording their access provides a clear accountability trail for the final privacy review. The viewer filters its own `view_audit_logs` entry from the returned list to avoid confusing the administrator with a recursive-looking event.
 
 ### D16 — Caregiver "false positive" feedback deferred, not adopted as threshold-adjusting
 **Decision:** The backlog item allowing caregivers to mark an alert as a false positive, with that feedback nudging the elder's detection threshold over time, is deferred and will **not** feed back into baseline/threshold computation if implemented.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"baselium/backend/internal/config"
 	"baselium/backend/internal/db"
 	"flag"
 	"fmt"
@@ -17,6 +18,9 @@ func env(key, fallback string) string {
 	return fallback
 }
 func main() {
+	if err := config.LoadDotEnv(); err != nil {
+		log.Fatalf("load .env: %v", err)
+	}
 	userID := flag.Int("user-id", 1, "elder users.user_id to seed")
 	days := flag.Int("days", 14, "number of daily check-ins to add")
 	scenario := flag.String("scenario", "normal", "normal or mood-drop")

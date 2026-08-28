@@ -100,6 +100,16 @@ function ElderDetail({ userId, onBack, token }) {
     }
   }
 
+  async function downloadReport() {
+    try {
+      const blob = await api.downloadReport(token, userId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = `baselium-report-${userId}.xlsx`; link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { setError(err.message); }
+  }
+
   const chartData = trend
     ? [...trend.points].reverse().map((p) => ({
         time: new Date(p.time).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
@@ -110,7 +120,7 @@ function ElderDetail({ userId, onBack, token }) {
 
   return (
     <div>
-      <button className="link-btn" onClick={onBack}>&larr; Back to triage</button>
+      <div className="spread"><button className="link-btn" onClick={onBack}>&larr; Back to triage</button><button className="secondary" onClick={downloadReport}>Download Excel report</button></div>
       {error && <div className="error" style={{ marginTop: 8 }}>{error}</div>}
 
       <div className="card" style={{ marginTop: 12 }}>

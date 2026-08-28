@@ -9,6 +9,7 @@ import (
 	"baselium/backend/internal/admin"
 	"baselium/backend/internal/auth"
 	"baselium/backend/internal/checkin"
+	"baselium/backend/internal/config"
 	"baselium/backend/internal/dashboard"
 	"baselium/backend/internal/db"
 	"baselium/backend/internal/family"
@@ -37,6 +38,9 @@ func withCORS(h http.Handler) http.Handler {
 }
 
 func main() {
+	if err := config.LoadDotEnv(); err != nil {
+		log.Fatalf("load .env: %v", err)
+	}
 	auth.SetSecret(env("JWT_SECRET", "dev-secret-change-me"))
 
 	conn, err := db.Connect(
@@ -83,6 +87,7 @@ func main() {
 	mux.Handle("GET /api/dashboard/triage", auth.Require("caregiver")(http.HandlerFunc(dashH.Triage)))
 	mux.Handle("GET /api/dashboard/trend", auth.Require("caregiver", "elder")(http.HandlerFunc(dashH.Trend)))
 	mux.Handle("GET /api/dashboard/alerts", auth.Require("caregiver", "family")(http.HandlerFunc(dashH.AlertHistory)))
+	mux.Handle("GET /api/dashboard/report", auth.Require("caregiver")(http.HandlerFunc(dashH.ExportReport)))
 	mux.Handle("GET /api/notifications", auth.Require("caregiver")(http.HandlerFunc(notifH.List)))
 	mux.Handle("POST /api/notifications/ack", auth.Require("caregiver")(http.HandlerFunc(notifH.Ack)))
 	mux.Handle("GET /api/notifications/live", hub)

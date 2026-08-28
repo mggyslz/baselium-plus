@@ -49,7 +49,7 @@ export default function ElderCheckin() {
   return (
     <div className="container" style={{ maxWidth: 560 }}>
       <div className="card">
-        <h2>How are you today, {session.role === "elder" ? "" : ""}?</h2>
+        <h2>How are you today?</h2>
         <form onSubmit={handleSubmit} className="stack">
           <div>
             <label>Mood (1 = very low, 5 = great)</label>

@@ -79,9 +79,11 @@ All 9 tables from `backend/migrations/0001_init.sql` applied:
 ---
 
 ## Known gaps / not yet done
-- Notifications are stored in DB but **WebSocket / FCM push delivery is not wired**.
+- Live in-app caregiver alerts are delivered through an authenticated WebSocket, with durable DB-backed retry
+  while an active dashboard is connected. FCM/background push is intentionally not included (D13).
 - Mobile React Native check-in app (from the proposal) not present in this repo.
-- Cosmetic bug: elder check-in heading renders an empty name
+- Production TLS, encrypted database storage, secret management, and real-user validation are deployment/final-study
+  requirements; see `EVALUATION.md`.
   (`frontend/src/pages/ElderCheckin.jsx`).
 
 ---

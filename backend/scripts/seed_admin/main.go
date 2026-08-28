@@ -2,6 +2,7 @@ package main
 
 import (
 	"baselium/backend/internal/auth"
+	"baselium/backend/internal/config"
 	"baselium/backend/internal/db"
 	"fmt"
 	"log"
@@ -15,6 +16,9 @@ func env(key, fallback string) string {
 	return fallback
 }
 func main() {
+	if err := config.LoadDotEnv(); err != nil {
+		log.Fatalf("load .env: %v", err)
+	}
 	conn, err := db.Connect(env("DB_HOST", "localhost"), env("DB_PORT", "5432"), env("DB_USER", "postgres"), env("DB_PASSWORD", "postgres"), env("DB_NAME", "baselium"), env("DB_SSLMODE", "disable"))
 	if err != nil {
 		log.Fatal(err)
