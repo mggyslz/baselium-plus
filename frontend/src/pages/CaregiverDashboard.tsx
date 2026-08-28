@@ -346,6 +346,33 @@ export default function CaregiverDashboard() {
     loadNotifications();
   }, []);
 
+  useEffect(() => {
+    const base = import.meta.env.VITE_API_URL || "http://localhost:8080";
+    const wsURL = base.replace(/^http/, "ws") + "/api/notifications/live?token=" + encodeURIComponent(session.token);
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
+    let socket: WebSocket;
+    const connect = () => {
+      socket = new WebSocket(wsURL);
+      socket.onmessage = (event) => {
+        try {
+          const alert = JSON.parse(event.data);
+          if (alert.type === "notification") {
+            setError("");
+            loadNotifications();
+            loadTriage();
+          }
+        } catch { /* Ignore malformed live events; REST stays authoritative. */ }
+      };
+      socket.onclose = () => {
+        if (!closed) reconnectTimer = setTimeout(connect, 3000);
+      };
+      socket.onerror = () => socket.close();
+    };
+    connect();
+    return () => { closed = true; if (reconnectTimer) clearTimeout(reconnectTimer); socket?.close(); };
+  }, [session.token]);
+
   if (selectedUser) {
     return (
       <div className="container">

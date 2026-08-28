@@ -1,13 +1,8 @@
-// Package notification turns anomalies into caregiver/family alerts.
-// D6: family viewers only see high-severity anomalies.
-// D7: multi-caregiver ack-once, log all.
-// FCM/WebSocket push are stubbed as logged sends in this template — swap in
-// real integrations in internal/notification/fcm.go and websocket.go.
+// Package notification persists caregiver alerts and delivers them in-app.
 package notification
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -22,87 +17,85 @@ type Notification struct {
 	AcknowledgedBy *int
 }
 
-// DispatchForAnomaly creates one notification per active caregiver assigned
-// to the elder (reliability target: dispatched immediately; retry logic
-// would live in fcm.go for real push failures).
+var defaultHub *Hub
+
+// SetHub installs the API process's live-delivery hub.
+func SetHub(h *Hub) { defaultHub = h }
+
+// DispatchForAnomaly persists and immediately attempts delivery for each caregiver.
 func DispatchForAnomaly(db *sql.DB, anomalyID, userID int, severity, anomalyType, reason string) error {
-	rows, err := db.Query(
-		`SELECT caregiver_id FROM user_caregiver WHERE user_id = $1 AND is_active = TRUE`, userID)
+	rows, err := db.Query(`SELECT caregiver_id FROM user_caregiver WHERE user_id = $1 AND is_active = TRUE`, userID)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
-
-	message := fmt.Sprintf("[%s] %s alert: %s", severity, anomalyType, reason)
-
-	var caregiverIDs []int
+	message := "[" + severity + "] " + anomalyType + " alert: " + reason
 	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err == nil {
-			caregiverIDs = append(caregiverIDs, id)
+		var caregiverID, notificationID int
+		if err := rows.Scan(&caregiverID); err != nil {
+			return err
 		}
-	}
-	for _, cgID := range caregiverIDs {
-		result, err := db.Exec(
-			`INSERT INTO notifications (anomaly_id, caregiver_id, message)
-			 SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE anomaly_id = $1 AND caregiver_id = $2)`,
-			anomalyID, cgID, message,
-		)
+		err := db.QueryRow(`INSERT INTO notifications (anomaly_id, caregiver_id, message) SELECT $1, $2, $3 WHERE NOT EXISTS (SELECT 1 FROM notifications WHERE anomaly_id = $1 AND caregiver_id = $2) RETURNING notification_id`, anomalyID, caregiverID, message).Scan(&notificationID)
+		if err == sql.ErrNoRows {
+			continue
+		}
 		if err != nil {
 			return err
 		}
-		created, _ := result.RowsAffected()
-		if created == 0 {
-			continue
-		}
-		// stub push — see fcm.go / websocket.go
-		fmt.Printf("[push-stub] caregiver=%d anomaly=%d msg=%q\n", cgID, anomalyID, message)
+		attemptDelivery(db, defaultHub, Notification{NotificationID: notificationID, AnomalyID: anomalyID, CaregiverID: caregiverID, Message: message, SentAt: time.Now()})
 	}
-
-	// D6: family viewers only notified on high severity, and only get a
-	// generic status ping (not the detailed reason/message).
-	if severity == "high" {
-		frows, err := db.Query(`SELECT family_id FROM family_access WHERE user_id = $1 AND is_active = TRUE`, userID)
-		if err == nil {
-			defer frows.Close()
-			for frows.Next() {
-				var fid int
-				frows.Scan(&fid)
-				fmt.Printf("[push-stub] family=%d anomaly=%d msg=%q\n", fid, anomalyID, "A high-priority status alert was raised for your family member.")
-			}
-		}
-	}
-	return nil
+	return rows.Err()
 }
 
-// Acknowledge implements D7: one ack resolves the alert for every caregiver
-// on the elder (marks the underlying anomaly resolved), but logs which
-// caregiver actually clicked and when.
+func attemptDelivery(db *sql.DB, hub *Hub, n Notification) {
+	delivered := hub != nil && hub.Publish(n.CaregiverID, LiveAlert{Type: "notification", NotificationID: n.NotificationID, AnomalyID: n.AnomalyID, Message: n.Message, SentAt: n.SentAt})
+	if delivered {
+		_, _ = db.Exec(`UPDATE notifications SET delivery_attempts = delivery_attempts + 1, delivered_at = now() WHERE notification_id = $1`, n.NotificationID)
+		return
+	}
+	// Exponential retry capped at five minutes; REST remains the durable source.
+	_, _ = db.Exec(`UPDATE notifications SET delivery_attempts = delivery_attempts + 1, next_delivery_at = now() + (LEAST(300, 5 * power(2, delivery_attempts)) * interval '1 second') WHERE notification_id = $1`, n.NotificationID)
+}
+
+// RetryPending is run by the API process, which owns WebSocket connections.
+func RetryPending(db *sql.DB, hub *Hub) error {
+	rows, err := db.Query(`SELECT notification_id, anomaly_id, caregiver_id, message, sent_at, is_read, acknowledged_at, acknowledged_by FROM notifications WHERE delivered_at IS NULL AND next_delivery_at <= now() ORDER BY next_delivery_at LIMIT 100`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var n Notification
+		if err := rows.Scan(&n.NotificationID, &n.AnomalyID, &n.CaregiverID, &n.Message, &n.SentAt, &n.IsRead, &n.AcknowledgedAt, &n.AcknowledgedBy); err == nil {
+			attemptDelivery(db, hub, n)
+		}
+	}
+	return rows.Err()
+}
+func RunRetryLoop(db *sql.DB, hub *Hub, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		_ = RetryPending(db, hub)
+	}
+}
+
 func Acknowledge(db *sql.DB, anomalyID, ackingCaregiverID int) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-
 	if _, err := tx.Exec(`UPDATE anomalies SET is_resolved = TRUE WHERE anomaly_id = $1`, anomalyID); err != nil {
 		return err
 	}
-	// Every caregiver's notification row for this anomaly gets marked
-	// acknowledged (system-wide resolution)...
-	if _, err := tx.Exec(
-		`UPDATE notifications SET is_read = TRUE, acknowledged_at = now(), acknowledged_by = $2 WHERE anomaly_id = $1`,
-		anomalyID, ackingCaregiverID,
-	); err != nil {
+	if _, err := tx.Exec(`UPDATE notifications SET is_read = TRUE, acknowledged_at = now(), acknowledged_by = $2 WHERE anomaly_id = $1`, anomalyID, ackingCaregiverID); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
-
 func ListForCaregiver(db *sql.DB, caregiverID int) ([]Notification, error) {
-	rows, err := db.Query(
-		`SELECT notification_id, anomaly_id, caregiver_id, message, sent_at, is_read, acknowledged_at, acknowledged_by
-		 FROM notifications WHERE caregiver_id = $1 ORDER BY sent_at DESC LIMIT 100`, caregiverID)
+	rows, err := db.Query(`SELECT notification_id, anomaly_id, caregiver_id, message, sent_at, is_read, acknowledged_at, acknowledged_by FROM notifications WHERE caregiver_id = $1 ORDER BY sent_at DESC LIMIT 100`, caregiverID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,5 +107,5 @@ func ListForCaregiver(db *sql.DB, caregiverID int) ([]Notification, error) {
 			out = append(out, n)
 		}
 	}
-	return out, nil
+	return out, rows.Err()
 }

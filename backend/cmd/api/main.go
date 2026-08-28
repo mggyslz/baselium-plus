@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"baselium/backend/internal/admin"
 	"baselium/backend/internal/auth"
@@ -59,6 +60,9 @@ func main() {
 	healthNoteH := healthnote.NewHandler(conn)
 	adminH := admin.NewHandler(conn)
 	notifH := notification.NewHandler(conn)
+	hub := notification.NewHub()
+	notification.SetHub(hub)
+	go notification.RunRetryLoop(conn, hub, 15*time.Second)
 
 	mux := http.NewServeMux()
 
@@ -81,6 +85,7 @@ func main() {
 	mux.Handle("GET /api/dashboard/alerts", auth.Require("caregiver", "family")(http.HandlerFunc(dashH.AlertHistory)))
 	mux.Handle("GET /api/notifications", auth.Require("caregiver")(http.HandlerFunc(notifH.List)))
 	mux.Handle("POST /api/notifications/ack", auth.Require("caregiver")(http.HandlerFunc(notifH.Ack)))
+	mux.Handle("GET /api/notifications/live", hub)
 	mux.Handle("POST /api/family/revoke", auth.Require("caregiver")(http.HandlerFunc(familyH.Revoke)))
 	mux.Handle("POST /api/family/grant", auth.Require("caregiver")(http.HandlerFunc(familyH.Grant)))
 	mux.Handle("GET /api/family/members", auth.Require("caregiver")(http.HandlerFunc(familyH.Members)))

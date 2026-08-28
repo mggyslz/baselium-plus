@@ -103,10 +103,14 @@ CREATE TABLE notifications (
     caregiver_id          INTEGER NOT NULL REFERENCES caregivers(caregiver_id) ON DELETE CASCADE,
     message                TEXT NOT NULL,
     sent_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
+    delivery_attempts       INTEGER NOT NULL DEFAULT 0,
+    delivered_at            TIMESTAMPTZ,
+    next_delivery_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     is_read                 BOOLEAN NOT NULL DEFAULT FALSE,
     acknowledged_at          TIMESTAMPTZ,
     acknowledged_by          INTEGER REFERENCES caregivers(caregiver_id) -- D7: who actually acked
 );
+CREATE INDEX idx_notifications_pending_delivery ON notifications (next_delivery_at) WHERE delivered_at IS NULL;
 
 CREATE TABLE health_notes (
     note_id         SERIAL PRIMARY KEY,

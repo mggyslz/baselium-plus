@@ -31,9 +31,10 @@
 
 ## Phase 4 — Notification Development
 
-- [ ] FCM integration (`internal/notification/fcm.go`)
-- [ ] WebSocket live alerts (`internal/notification/websocket.go`)
-- [ ] Retry logic for undelivered notifications
+- [x] WebSocket live alerts (`internal/notification/websocket.go`) — hub keyed by `caregiver_id`,
+      JWT-authenticated on connect, pushed inline from `internal/anomaly` and the missed-check-in
+      worker (see D13; FCM intentionally not adopted for now)
+- [x] Retry logic for undelivered notifications
 - [x] Multi-caregiver acknowledgment logic (ack-once, log who/when)
 - [x] Family viewer: high-severity-only notify
 - [x] Caregiver **Access** tab — assign elders to self, grant family access, revoke access, list granted family
@@ -54,14 +55,53 @@
 
 - [ ] Review against functional/non-functional requirements
 - [ ] Refine thresholds based on final test data
-- [ ] Polish dashboard (trend charts and triage view are implemented; downloadable reports remain)
-- [ ] Audit log review for Data Privacy Act compliance
+- [ ] Polish dashboard (trend charts and triage view are implemented; Excel export remains)
+- [ ] Audit log review for Data Privacy Act compliance (see D15 — audit-log viewing itself is
+      intentionally not logged)
 - [ ] Prep for final defense
+
+## Bugs
+
+- [ ] Elder check-in heading renders an empty name (`frontend/src/pages/ElderCheckin.jsx`)
 
 ## Backlog / Nice-to-have
 
-- [ ] Downloadable PDF/CSV activity reports
+- [ ] Downloadable Excel (.xlsx) activity reports — server-side export (check-in history, alert
+      log, summary sheet), reusing existing trend/alert queries (see D14 — PDF/CSV not adopted)
 - [x] Health notes UI: caregiver note composer and chronological note history in elder detail
 - [x] Health notes API: caregivers can create and list notes for assigned elders (`GET`/`POST /api/health-notes`)
 - [x] Audit log viewer for admins (read-only recent actions, search, refresh, and access audit trail)
 - [x] Admin Elder View: seven-day check-in statistics, open-alert counts, and active caregiver partnerships
+
+### Behavioral intelligence / alerting enhancements
+- [ ] Trend-aware severity: track whether a deviation is worsening, stable, or
+      improving across consecutive days, not just a single-day flag
+- [ ] Caregiver feedback loop: let a caregiver mark an alert as false positive/reviewed
+      (annotation only — display and triage use, does not feed back into baseline or
+      threshold computation; see D16, resolved to preserve D2's explainable-only stance)
+- [ ] Missed check-in escalation tiers: day 1 = reminder, day 2-3 = caregiver
+      notified, beyond that = optional emergency contact ping (builds on the existing
+      missed-check-in worker logic from Phase 5, not new from scratch)
+- [ ] Surface elder-submitted `notes`/`context_note` alongside the related anomaly alert,
+      so caregivers see the elder's own explanation, not just a severity score
+- [ ] Baseline reset action for caregivers — lets them manually invalidate a stale
+      baseline (e.g. after a hospital stay) instead of waiting for false anomalies to age out
+
+### Elder-facing UX
+- [ ] Elder-side input alternatives: emoji-scale or voice note option alongside
+      the numeric 1-5 mood/activity input
+
+### Caregiver-facing UX
+- [ ] Caregiver alert digest: batch low-severity alerts into a daily summary
+      instead of real-time push for everything
+- [ ] Scheduled report emailing: auto-generate and email a weekly PDF report
+      to caregivers instead of manual download
+
+### Security / reliability (RA 10173 + 5-minute alert SLA)
+- [ ] JWT refresh/rotation instead of a flat ~24h expiry with no refresh token
+- [ ] Login rate limiting / attempt throttling
+- [x] Audit log the *viewing* of audit logs by admins, or explicitly document in
+      DECISIONS.md that this is intentionally not logged — documented as intentionally
+      not logged (see D15)
+- [ ] Log failed notification delivery attempts to a table (not just silent retry),
+      so the 5-minute alert SLA can be demonstrated with real data during the defense
