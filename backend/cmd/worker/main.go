@@ -23,6 +23,14 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+func requiredEnv(key string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	log.Fatalf("%s must be set (copy .env.example to .env for local development)", key)
+	return ""
+}
+
 func main() {
 	if err := config.LoadDotEnv(); err != nil {
 		log.Fatalf("load .env: %v", err)
@@ -33,8 +41,8 @@ func main() {
 	conn, err := db.Connect(
 		env("DB_HOST", "localhost"),
 		env("DB_PORT", "5432"),
-		env("DB_USER", "postgres"),
-		env("DB_PASSWORD", "postgres"),
+		requiredEnv("DB_USER"),
+		requiredEnv("DB_PASSWORD"),
 		env("DB_NAME", "baselium"),
 		env("DB_SSLMODE", "disable"),
 	)
