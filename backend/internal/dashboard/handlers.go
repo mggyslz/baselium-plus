@@ -36,7 +36,7 @@ func (h *Handler) Triage(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(`
 		SELECT u.user_id, u.full_name,
 		       (SELECT MAX(checkin_time) FROM check_ins c WHERE c.user_id = u.user_id) AS last_checkin,
-		       (SELECT COUNT(*) FROM anomalies a WHERE a.user_id = u.user_id AND a.is_resolved = FALSE) AS open_count,
+		       (SELECT COUNT(*) FROM anomalies a WHERE a.user_id = u.user_id AND a.is_resolved = FALSE AND COALESCE(a.review_status, '') <> 'false_positive') AS open_count,
 		       (SELECT a.severity FROM anomalies a WHERE a.user_id = u.user_id AND a.is_resolved = FALSE
 		          ORDER BY CASE a.severity WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC LIMIT 1) AS top_sev
 		FROM users u
@@ -147,8 +147,9 @@ func (h *Handler) AlertHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `SELECT anomaly_id, anomaly_type, severity, deviation_metric, deviation_magnitude, duration_days, detected_at, is_resolved
-	           FROM anomalies WHERE user_id = $1`
+	query := `SELECT a.anomaly_id, a.anomaly_type, a.severity, a.deviation_metric, a.deviation_magnitude, a.duration_days, a.detected_at, a.is_resolved,
+	                  a.trend_direction, a.review_status, a.reviewed_at, ci.notes, ci.context_note
+	           FROM anomalies a LEFT JOIN check_ins ci ON ci.checkin_id = a.checkin_id WHERE a.user_id = $1`
 	args := []interface{}{userID}
 	if claims.Role == "family" {
 		query += ` AND severity = 'high'`
@@ -163,23 +164,67 @@ func (h *Handler) AlertHistory(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type row struct {
-		AnomalyID          int       `json:"anomaly_id"`
-		AnomalyType        string    `json:"anomaly_type"`
-		Severity           string    `json:"severity"`
-		DeviationMetric    *string   `json:"deviation_metric"`
-		DeviationMagnitude float64   `json:"deviation_magnitude"`
-		DurationDays       int       `json:"duration_days"`
-		DetectedAt         time.Time `json:"detected_at"`
-		IsResolved         bool      `json:"is_resolved"`
+		AnomalyID          int        `json:"anomaly_id"`
+		AnomalyType        string     `json:"anomaly_type"`
+		Severity           string     `json:"severity"`
+		DeviationMetric    *string    `json:"deviation_metric"`
+		DeviationMagnitude float64    `json:"deviation_magnitude"`
+		DurationDays       int        `json:"duration_days"`
+		DetectedAt         time.Time  `json:"detected_at"`
+		IsResolved         bool       `json:"is_resolved"`
+		TrendDirection     string     `json:"trend_direction"`
+		ReviewStatus       *string    `json:"review_status"`
+		ReviewedAt         *time.Time `json:"reviewed_at"`
+		Notes              *string    `json:"notes"`
+		ContextNote        *string    `json:"context_note"`
 	}
 	var out []row
 	for rows.Next() {
 		var rr row
-		if err := rows.Scan(&rr.AnomalyID, &rr.AnomalyType, &rr.Severity, &rr.DeviationMetric, &rr.DeviationMagnitude, &rr.DurationDays, &rr.DetectedAt, &rr.IsResolved); err == nil {
+		if err := rows.Scan(&rr.AnomalyID, &rr.AnomalyType, &rr.Severity, &rr.DeviationMetric, &rr.DeviationMagnitude, &rr.DurationDays, &rr.DetectedAt, &rr.IsResolved, &rr.TrendDirection, &rr.ReviewStatus, &rr.ReviewedAt, &rr.Notes, &rr.ContextNote); err == nil {
 			out = append(out, rr)
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// ResetBaseline starts a new seven-day cold-start period after a material life
+// change. It never deletes historical baselines or check-ins.
+func (h *Handler) ResetBaseline(w http.ResponseWriter, r *http.Request) {
+	claims := auth.FromContext(r.Context())
+	var req struct {
+		UserID int `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID < 1 {
+		http.Error(w, `{"error":"valid user_id required"}`, http.StatusBadRequest)
+		return
+	}
+	if !requireCaregiverElder(w, h.DB, claims.ProfileID, req.UserID) {
+		return
+	}
+	tx, err := h.DB.Begin()
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, 500)
+		return
+	}
+	defer tx.Rollback()
+	if _, err = tx.Exec(`UPDATE users SET baseline_reset_at = now() WHERE user_id = $1`, req.UserID); err != nil {
+		http.Error(w, `{"error":"db error"}`, 500)
+		return
+	}
+	if _, err = tx.Exec(`UPDATE behavioral_baselines SET is_active = FALSE WHERE user_id = $1 AND is_active = TRUE`, req.UserID); err != nil {
+		http.Error(w, `{"error":"db error"}`, 500)
+		return
+	}
+	if _, err = tx.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'reset_baseline', 'user', $2)`, claims.AccountID, req.UserID); err != nil {
+		http.Error(w, `{"error":"db error"}`, 500)
+		return
+	}
+	if err = tx.Commit(); err != nil {
+		http.Error(w, `{"error":"db error"}`, 500)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ExportReport creates a portable Excel workbook with the assigned elder's

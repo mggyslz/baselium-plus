@@ -13,7 +13,7 @@ export type ApiPayload = Record<string, unknown>;
 export interface Checkin { checkin_id: number; checkin_time: string; mood: number; activity_level: number; notes?: string }
 export interface CheckinResult { anomalies_raised?: unknown[] }
 export interface Trend { points: { time: string; mood: number; activity: number }[]; baseline_mood: number }
-export interface Alert { anomaly_id: number; detected_at: string; anomaly_type: string; severity: string; deviation_metric: string; deviation_magnitude?: number; duration_days: number; is_resolved: boolean }
+export interface Alert { anomaly_id: number; detected_at: string; anomaly_type: string; severity: string; deviation_metric: string; deviation_magnitude?: number; duration_days: number; is_resolved: boolean; trend_direction?: "worsening" | "stable" | "improving"; review_status?: "reviewed" | "false_positive"; notes?: string; context_note?: string }
 export interface TriageItem { user_id: number; full_name: string; last_checkin?: string; open_anomaly_count: number; highest_open_severity?: string }
 export interface Notification { NotificationID: number; SentAt: string; Message: string; AcknowledgedAt?: string; IsRead: boolean }
 export interface FamilyMember { id: number; full_name: string; relationship?: string; email: string; is_active: boolean }

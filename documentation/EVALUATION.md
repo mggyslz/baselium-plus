@@ -10,6 +10,7 @@
 | Caregiver dashboard | Triage, charts, alert acknowledgement, health notes, Excel export | Complete |
 | Family privacy boundary | Read-only high-severity status only | Complete |
 | Accountability | Audit entries for key data actions and admin views | Complete |
+| Alert refinement | Trend direction, caregiver review annotation, elder context notes, baseline reset | Complete |
 | Mobile/offline app | No React Native client or offline synchronization | Deferred |
 
 ## Test evidence

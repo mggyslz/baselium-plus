@@ -34,6 +34,7 @@ type Anomaly struct {
 	DeviationMetric    string
 	DeviationMagnitude float64
 	DurationDays       int
+	TrendDirection     string
 	Reason             string // human-readable explainable reason
 }
 
@@ -227,9 +228,11 @@ func persist(db *sql.DB, a *Anomaly) error {
 	// its history while preventing repeated worker/check-in executions from
 	// creating alert storms.
 	var existingID int
-	err := db.QueryRow(`SELECT anomaly_id FROM anomalies WHERE user_id = $1 AND anomaly_type = $2 AND is_resolved = FALSE ORDER BY detected_at DESC LIMIT 1`, a.UserID, a.AnomalyType).Scan(&existingID)
+	var previousMagnitude float64
+	err := db.QueryRow(`SELECT anomaly_id, COALESCE(deviation_magnitude, 0) FROM anomalies WHERE user_id = $1 AND anomaly_type = $2 AND is_resolved = FALSE ORDER BY detected_at DESC LIMIT 1`, a.UserID, a.AnomalyType).Scan(&existingID, &previousMagnitude)
 	if err == nil {
-		_, err = db.Exec(`UPDATE anomalies SET baseline_id=$2, checkin_id=$3, severity=CASE WHEN $4='high' OR (severity='low' AND $4='medium') THEN $4 ELSE severity END, deviation_metric=$5, deviation_magnitude=GREATEST(COALESCE(deviation_magnitude, 0), $6), duration_days=GREATEST(duration_days, $7), detected_at=now() WHERE anomaly_id=$1`, existingID, nullableBaselineID(a.BaselineID), a.CheckinID, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays)
+		a.TrendDirection = trendDirection(previousMagnitude, a.DeviationMagnitude)
+		_, err = db.Exec(`UPDATE anomalies SET baseline_id=$2, checkin_id=$3, severity=CASE WHEN $4='high' OR (severity='low' AND $4='medium') THEN $4 ELSE severity END, deviation_metric=$5, deviation_magnitude=$6, duration_days=GREATEST(duration_days, $7), trend_direction=$8, detected_at=now() WHERE anomaly_id=$1`, existingID, nullableBaselineID(a.BaselineID), a.CheckinID, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays, a.TrendDirection)
 		a.AnomalyID = existingID
 		return err
 	}
@@ -241,10 +244,11 @@ func persist(db *sql.DB, a *Anomaly) error {
 	if a.BaselineID != 0 {
 		baselineID = a.BaselineID
 	}
+	a.TrendDirection = "stable"
 	err = db.QueryRow(
-		`INSERT INTO anomalies (user_id, baseline_id, checkin_id, anomaly_type, severity, deviation_metric, deviation_magnitude, duration_days)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING anomaly_id`,
-		a.UserID, baselineID, a.CheckinID, a.AnomalyType, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays,
+		`INSERT INTO anomalies (user_id, baseline_id, checkin_id, anomaly_type, severity, deviation_metric, deviation_magnitude, duration_days, trend_direction)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING anomaly_id`,
+		a.UserID, baselineID, a.CheckinID, a.AnomalyType, a.Severity, a.DeviationMetric, a.DeviationMagnitude, a.DurationDays, a.TrendDirection,
 	).Scan(&a.AnomalyID)
 	return err
 }
@@ -257,3 +261,14 @@ func nullableBaselineID(id int) interface{} {
 }
 
 func round2(f float64) float64 { return math.Round(f*100) / 100 }
+
+func trendDirection(previous, current float64) string {
+	const tolerance = 0.1
+	if current > previous+tolerance {
+		return "worsening"
+	}
+	if current < previous-tolerance {
+		return "improving"
+	}
+	return "stable"
+}

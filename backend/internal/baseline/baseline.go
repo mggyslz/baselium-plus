@@ -12,17 +12,17 @@ import (
 const WindowDays = 7 // D3
 
 type Baseline struct {
-	BaselineID        int
-	UserID            int
-	AvgMood           float64
-	AvgActivity       float64
-	StddevMood        float64
-	StddevActivity    float64
-	CheckinFrequency  float64 // D12: fraction of expected check-ins actually submitted
-	SampleSize        int
-	PeriodDays        int
-	IsColdStart       bool // D4
-	ComputedAt        time.Time
+	BaselineID       int
+	UserID           int
+	AvgMood          float64
+	AvgActivity      float64
+	StddevMood       float64
+	StddevActivity   float64
+	CheckinFrequency float64 // D12: fraction of expected check-ins actually submitted
+	SampleSize       int
+	PeriodDays       int
+	IsColdStart      bool // D4
+	ComputedAt       time.Time
 }
 
 type checkinSample struct {
@@ -36,10 +36,14 @@ type checkinSample struct {
 func Compute(db *sql.DB, userID int) (*Baseline, error) {
 	since := time.Now().AddDate(0, 0, -WindowDays)
 
+	var resetAt *time.Time
+	if err := db.QueryRow(`SELECT baseline_reset_at FROM users WHERE user_id = $1`, userID).Scan(&resetAt); err != nil {
+		return nil, err
+	}
 	rows, err := db.Query(
 		`SELECT mood, activity_level, checkin_time FROM check_ins
-		 WHERE user_id = $1 AND checkin_time >= $2 AND is_missed = FALSE
-		 ORDER BY checkin_time`, userID, since)
+		 WHERE user_id = $1 AND checkin_time >= $2 AND ($3::timestamptz IS NULL OR checkin_time >= $3) AND is_missed = FALSE
+		 ORDER BY checkin_time`, userID, since, resetAt)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +63,7 @@ func Compute(db *sql.DB, userID int) (*Baseline, error) {
 	// brand-new elder with 3 days of check-ins is still cold-start even if
 	// they never missed a day).
 	var firstCheckinTime time.Time
-	err = db.QueryRow(`SELECT MIN(checkin_time) FROM check_ins WHERE user_id = $1`, userID).Scan(&firstCheckinTime)
+	err = db.QueryRow(`SELECT MIN(checkin_time) FROM check_ins WHERE user_id = $1 AND ($2::timestamptz IS NULL OR checkin_time >= $2)`, userID, resetAt).Scan(&firstCheckinTime)
 	isColdStart := err != nil || firstCheckinTime.IsZero() || time.Since(firstCheckinTime) < WindowDays*24*time.Hour
 
 	b := &Baseline{

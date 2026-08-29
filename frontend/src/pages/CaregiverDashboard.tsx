@@ -100,6 +100,15 @@ function ElderDetail({ userId, onBack, token }) {
     }
   }
 
+  async function review(anomalyId, status) {
+    try { await api.reviewAlert(token, anomalyId, status); load(); } catch (err) { setError(err.message); }
+  }
+
+  async function resetBaseline() {
+    if (!window.confirm("Reset this elder's baseline? New check-ins will begin a fresh seven-day cold-start period.")) return;
+    try { await api.resetBaseline(token, userId); load(); } catch (err) { setError(err.message); }
+  }
+
   async function downloadReport() {
     try {
       const blob = await api.downloadReport(token, userId);
@@ -120,7 +129,7 @@ function ElderDetail({ userId, onBack, token }) {
 
   return (
     <div>
-      <div className="spread"><button className="link-btn" onClick={onBack}>&larr; Back to triage</button><button className="secondary" onClick={downloadReport}>Download Excel report</button></div>
+      <div className="spread"><button className="link-btn" onClick={onBack}>&larr; Back to triage</button><div><button className="secondary" onClick={downloadReport}>Download Excel report</button> <button className="secondary" onClick={resetBaseline}>Reset baseline</button></div></div>
       {error && <div className="error" style={{ marginTop: 8 }}>{error}</div>}
 
       <div className="card" style={{ marginTop: 12 }}>
@@ -151,7 +160,7 @@ function ElderDetail({ userId, onBack, token }) {
         {alerts.length > 0 && (
           <table>
             <thead>
-              <tr><th>When</th><th>Type</th><th>Severity</th><th>Detail</th><th>Status</th><th></th></tr>
+              <tr><th>When</th><th>Type</th><th>Severity</th><th>Detail</th><th>Elder note</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               {alerts.map((a) => (
@@ -160,8 +169,9 @@ function ElderDetail({ userId, onBack, token }) {
                   <td>{a.anomaly_type.replace("_", " ")}</td>
                   <td><SeverityBadge severity={a.severity} /></td>
                   <td className="muted">{a.deviation_metric} · {a.deviation_magnitude?.toFixed?.(2)} · {a.duration_days}d</td>
-                  <td>{a.is_resolved ? <span style={{ color: "var(--ok)" }}>Acknowledged</span> : <span className="muted">Open</span>}</td>
-                  <td>{!a.is_resolved && <button className="secondary" onClick={() => ack(a.anomaly_id)}>Acknowledge</button>}</td>
+                  <td className="muted">{a.notes || a.context_note || "—"}</td>
+                  <td><div>{a.is_resolved ? <span style={{ color: "var(--ok)" }}>Acknowledged</span> : a.review_status === "false_positive" ? <span className="muted">False positive</span> : a.review_status === "reviewed" ? <span className="muted">Reviewed</span> : <span className="muted">Open</span>}</div><small className="muted">Trend: {a.trend_direction || "stable"}</small></td>
+                  <td>{!a.is_resolved && <><button className="secondary" onClick={() => ack(a.anomaly_id)}>Acknowledge</button>{!a.review_status && <> <button className="secondary" onClick={() => review(a.anomaly_id, "reviewed")}>Reviewed</button> <button className="secondary" onClick={() => review(a.anomaly_id, "false_positive")}>False positive</button></>}</>}</td>
                 </tr>
               ))}
             </tbody>

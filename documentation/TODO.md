@@ -75,17 +75,17 @@
 - [x] Admin Elder View: seven-day check-in statistics, open-alert counts, and active caregiver partnerships
 
 ### Behavioral intelligence / alerting enhancements
-- [ ] Trend-aware severity: track whether a deviation is worsening, stable, or
+- [x] Trend-aware severity: track whether a deviation is worsening, stable, or
       improving across consecutive days, not just a single-day flag
-- [ ] Caregiver feedback loop: let a caregiver mark an alert as false positive/reviewed
+- [x] Caregiver feedback loop: let a caregiver mark an alert as false positive/reviewed
       (annotation only — display and triage use, does not feed back into baseline or
       threshold computation; see D16, resolved to preserve D2's explainable-only stance)
 - [ ] Missed check-in escalation tiers: day 1 = reminder, day 2-3 = caregiver
       notified, beyond that = optional emergency contact ping (builds on the existing
       missed-check-in worker logic from Phase 5, not new from scratch)
-- [ ] Surface elder-submitted `notes`/`context_note` alongside the related anomaly alert,
+- [x] Surface elder-submitted `notes`/`context_note` alongside the related anomaly alert,
       so caregivers see the elder's own explanation, not just a severity score
-- [ ] Baseline reset action for caregivers — lets them manually invalidate a stale
+- [x] Baseline reset action for caregivers — lets them manually invalidate a stale
       baseline (e.g. after a hospital stay) instead of waiting for false anomalies to age out
 
 ### Elder-facing UX
