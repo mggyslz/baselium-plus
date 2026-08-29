@@ -99,8 +99,8 @@
       to caregivers instead of manual download
 
 ### Security / reliability (RA 10173 + 5-minute alert SLA)
-- [ ] JWT refresh/rotation instead of a flat ~24h expiry with no refresh token
-- [ ] Login rate limiting / attempt throttling
+- [x] JWT refresh/rotation instead of a flat ~24h expiry with no refresh token
+- [x] Login rate limiting / attempt throttling
 - [x] Audit log the viewing of audit logs by admins (see D15)
-- [ ] Log failed notification delivery attempts to a table (not just silent retry),
+- [x] Log failed notification delivery attempts to a table (not just silent retry),
       so the 5-minute alert SLA can be demonstrated with real data during the defense

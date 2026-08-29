@@ -18,6 +18,8 @@ type Claims struct {
 
 var jwtSecret []byte
 
+const AccessTokenLifetime = 15 * time.Minute
+
 func SetSecret(secret string) { jwtSecret = []byte(secret) }
 
 func IssueToken(accountID, profileID int, role string) (string, error) {
@@ -26,7 +28,7 @@ func IssueToken(accountID, profileID int, role string) (string, error) {
 		Role:      role,
 		ProfileID: profileID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenLifetime)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

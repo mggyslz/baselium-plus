@@ -21,7 +21,7 @@
 
 ## Privacy and deployment review
 
-The application enforces JWT roles and caregiver/family assignment checks, and records core data access/actions in `audit_logs`. Copy `backend/.env.example` to the ignored `backend/.env` for local configuration; process environment values take precedence. For deployment, set a strong `JWT_SECRET`, enable HTTPS/WSS through a reverse proxy, set `DB_SSLMODE=require` (or stronger), restrict CORS to the production frontend origin, secure database backups/storage, and define retention/incident-response procedures. The development defaults must not be used in production.
+The application enforces JWT roles and caregiver/family assignment checks, and records core data access/actions in `audit_logs`. Access JWTs expire after 15 minutes; refresh tokens are opaque, stored only as hashes, and rotated/revoked on every refresh. Five failed login attempts in 15 minutes per email or source address are throttled. Each live-notification attempt is retained in `notification_delivery_attempts`, including its time, result, and failure reason, providing evidence for the five-minute dispatch SLA. Copy `backend/.env.example` to the ignored `backend/.env` for local configuration; process environment values take precedence. For deployment, set a strong `JWT_SECRET`, enable HTTPS/WSS through a reverse proxy, set `DB_SSLMODE=require` (or stronger), restrict CORS to the production frontend origin, secure database backups/storage, and define retention/incident-response procedures. The development defaults must not be used in production.
 
 ## Suggested defense flow
 

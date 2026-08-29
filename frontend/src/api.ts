@@ -29,6 +29,7 @@ async function request<T>(path: string, { method = "GET", body, token, params }:
 export const api = {
   signup: (payload: ApiPayload) => request<Session>("/api/auth/signup", { method: "POST", body: payload }),
   login: (payload: ApiPayload) => request<Session>("/api/auth/login", { method: "POST", body: payload }),
+  refresh: (refreshToken: string) => request<Session>("/api/auth/refresh", { method: "POST", body: { refresh_token: refreshToken } }),
   submitCheckin: (token: string, payload: ApiPayload) => request<CheckinResult>("/api/checkins", { method: "POST", body: payload, token }),
   checkinHistory: (token: string, userId?: number) => request<Checkin[]>("/api/checkins", { token, params: userId ? { user_id: userId } : undefined }),
   triage: (token: string) => request<TriageItem[]>("/api/dashboard/triage", { token }), trend: (token: string, userId: number) => request<Trend>("/api/dashboard/trend", { token, params: { user_id: userId } }), alerts: (token: string, userId: number) => request<Alert[]>("/api/dashboard/alerts", { token, params: { user_id: userId } }), notifications: (token: string) => request<Notification[]>("/api/notifications", { token }),

@@ -3,7 +3,10 @@ package auth
 import (
 	"database/sql"
 	"encoding/json"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 )
 
 type Handler struct {
@@ -19,8 +22,8 @@ type signupRequest struct {
 	FullName     string `json:"full_name"`
 	Relationship string `json:"relationship,omitempty"` // for caregiver/family
 	// family-only: which elder's user_id they're viewing, and which caregiver granted it
-	ElderUserID  *int `json:"elder_user_id,omitempty"`
-	GrantedByID  *int `json:"granted_by_caregiver_id,omitempty"`
+	ElderUserID *int `json:"elder_user_id,omitempty"`
+	GrantedByID *int `json:"granted_by_caregiver_id,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
@@ -108,21 +111,22 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, refreshToken, err := CreateSession(tx, accountID, profileID, req.Role)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "could not create session")
+		return
+	}
 	if err := tx.Commit(); err != nil {
 		writeErr(w, http.StatusInternalServerError, "commit failed")
 		return
 	}
-
-	token, err := IssueToken(accountID, profileID, req.Role)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "could not issue token")
-		return
-	}
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"account_id": accountID,
-		"profile_id": profileID,
-		"role":       req.Role,
-		"token":      token,
+		"account_id":        accountID,
+		"profile_id":        profileID,
+		"role":              req.Role,
+		"token":             token,
+		"refresh_token":     refreshToken,
+		"access_expires_at": time.Now().Add(AccessTokenLifetime),
 	})
 }
 
@@ -138,6 +142,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	remoteAddr := clientAddress(r)
+	if h.isThrottled(req.Email, remoteAddr) {
+		writeErr(w, http.StatusTooManyRequests, "too many login attempts; try again in 15 minutes")
+		return
+	}
 	var accountID int
 	var passwordHash, role string
 	var isActive bool
@@ -146,6 +156,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		req.Email,
 	).Scan(&accountID, &passwordHash, &role, &isActive)
 	if err == sql.ErrNoRows {
+		h.recordFailure(req.Email, remoteAddr)
 		writeErr(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	} else if err != nil {
@@ -157,6 +168,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !VerifyPassword(req.Password, passwordHash) {
+		h.recordFailure(req.Email, remoteAddr)
 		writeErr(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
@@ -167,23 +179,70 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.DB.Exec(`UPDATE accounts SET last_login = now() WHERE account_id = $1`, accountID); err != nil {
+	tx, err := h.DB.Begin()
+	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "db error")
 		return
 	}
-	h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'login', 'account', $1)`, accountID)
-
-	token, err := IssueToken(accountID, profileID, role)
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE accounts SET last_login = now() WHERE account_id = $1`, accountID); err != nil {
+		writeErr(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	tx.Exec(`DELETE FROM login_failures WHERE email=$1`, req.Email)
+	tx.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'login', 'account', $1)`, accountID)
+	token, refreshToken, err := CreateSession(tx, accountID, profileID, role)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "could not issue token")
+		writeErr(w, http.StatusInternalServerError, "could not create session")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		writeErr(w, http.StatusInternalServerError, "commit failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"account_id": accountID,
-		"profile_id": profileID,
-		"role":       role,
-		"token":      token,
+		"account_id":        accountID,
+		"profile_id":        profileID,
+		"role":              role,
+		"token":             token,
+		"refresh_token":     refreshToken,
+		"access_expires_at": time.Now().Add(AccessTokenLifetime),
 	})
+}
+
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
+		writeErr(w, http.StatusBadRequest, "refresh_token is required")
+		return
+	}
+	accountID, profileID, role, token, refresh, err := RotateRefreshToken(h.DB, req.RefreshToken)
+	if err != nil {
+		writeErr(w, http.StatusUnauthorized, "invalid or expired refresh token")
+		return
+	}
+	h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'refresh_session', 'account', $1)`, accountID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"account_id": accountID, "profile_id": profileID, "role": role, "token": token, "refresh_token": refresh, "access_expires_at": time.Now().Add(AccessTokenLifetime)})
+}
+
+func (h *Handler) isThrottled(email, addr string) bool {
+	var n int
+	if h.DB.QueryRow(`SELECT COUNT(*) FROM login_failures WHERE attempted_at > now() - interval '15 minutes' AND (email=$1 OR remote_addr=$2)`, email, addr).Scan(&n) != nil {
+		return false
+	}
+	return n >= 5
+}
+func (h *Handler) recordFailure(email, addr string) {
+	_, _ = h.DB.Exec(`INSERT INTO login_failures (email, remote_addr) VALUES ($1,$2)`, email, addr)
+}
+func clientAddress(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 func resolveProfileID(db *sql.DB, accountID int, role string) (int, error) {

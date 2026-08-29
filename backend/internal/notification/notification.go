@@ -50,9 +50,13 @@ func DispatchForAnomaly(db *sql.DB, anomalyID, userID int, severity, anomalyType
 func attemptDelivery(db *sql.DB, hub *Hub, n Notification) {
 	delivered := hub != nil && hub.Publish(n.CaregiverID, LiveAlert{Type: "notification", NotificationID: n.NotificationID, AnomalyID: n.AnomalyID, Message: n.Message, SentAt: n.SentAt})
 	if delivered {
+		_, _ = db.Exec(`INSERT INTO notification_delivery_attempts (notification_id, delivered) VALUES ($1, TRUE)`, n.NotificationID)
 		_, _ = db.Exec(`UPDATE notifications SET delivery_attempts = delivery_attempts + 1, delivered_at = now() WHERE notification_id = $1`, n.NotificationID)
 		return
 	}
+	// An inactive dashboard is a delivery failure for the live-alert SLA. The
+	// durable notification remains available when the caregiver reconnects.
+	_, _ = db.Exec(`INSERT INTO notification_delivery_attempts (notification_id, delivered, error_detail) VALUES ($1, FALSE, $2)`, n.NotificationID, "no active WebSocket session")
 	// Exponential retry capped at five minutes; REST remains the durable source.
 	_, _ = db.Exec(`UPDATE notifications SET delivery_attempts = delivery_attempts + 1, next_delivery_at = now() + (LEAST(300, 5 * power(2, delivery_attempts)) * interval '1 second') WHERE notification_id = $1`, n.NotificationID)
 }

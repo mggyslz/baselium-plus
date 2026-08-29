@@ -81,6 +81,7 @@ func main() {
 	// public
 	mux.HandleFunc("POST /api/auth/signup", authH.Signup)
 	mux.HandleFunc("POST /api/auth/login", authH.Login)
+	mux.HandleFunc("POST /api/auth/refresh", authH.Refresh)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok"}`))
 	})

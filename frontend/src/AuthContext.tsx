@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { api } from "./api";
 import type { Session } from "./types";
 
 interface AuthContextValue { session: Session | null; login: (data: Session) => void; logout: () => void }
@@ -19,6 +20,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("baselium_session");
     setSession(null);
   }
+
+  // Access JWTs last 15 minutes. Rotate shortly before expiry, preserving a
+  // session without leaving a long-lived bearer token in use.
+  useEffect(() => {
+    if (!session?.refresh_token) return;
+    const expiresAt = new Date(session.access_expires_at || 0).getTime();
+    const delay = Math.max(0, expiresAt - Date.now() - 60_000);
+    const timer = window.setTimeout(async () => {
+      try { login(await api.refresh(session.refresh_token!)); }
+      catch { logout(); }
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [session?.token, session?.refresh_token]);
 
   return (
     <AuthContext.Provider value={{ session, login, logout }}>

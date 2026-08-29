@@ -2,6 +2,8 @@ export type Role = "elder" | "caregiver" | "family" | "admin";
 
 export interface Session {
   token: string;
+	refresh_token?: string;
+	access_expires_at?: string;
   role: Role;
   [key: string]: unknown;
 }
