@@ -89,8 +89,25 @@
       baseline (e.g. after a hospital stay) instead of waiting for false anomalies to age out
 
 ### Elder-facing UX
-- [ ] Elder-side input alternatives: emoji-scale or voice note option alongside
+- [x] Elder-side input alternatives: emoji-scale and voice note options alongside
       the numeric 1-5 mood/activity input
+
+### Recommended next focus (UI/UX first)
+
+The core backend flow is complete enough for the current scope. Prioritize a polished,
+accessible experience before adding broad new backend modules:
+
+- [x] Simplify elder check-ins with vector SVG icon scales, large touch targets, plain language,
+      optional voice input, and clear submit confirmation.
+- [x] Make alert cards immediately actionable: severity, what changed, onset date,
+      elder context note, and acknowledge/review controls in one place.
+- [x] Add helpful dashboard empty, loading, and failure states, including clear
+      check-in and acknowledgement feedback.
+- [x] Improve accessibility and mobile use: high contrast, larger text, visible focus
+      states, keyboard navigation, and responsive layouts.
+- [ ] Implement missed-check-in escalation tiers: day 1 elder reminder; days 2-3
+      caregiver notification; later optional emergency-contact escalation. This is the
+      next backend feature with the strongest connection to the monitoring objective.
 
 ### Caregiver-facing UX
 - [ ] Caregiver alert digest: batch low-severity alerts into a daily summary

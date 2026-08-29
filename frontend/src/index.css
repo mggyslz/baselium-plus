@@ -193,3 +193,238 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
 .notes-heading { gap: 16px; align-items: flex-start; }.notes-heading h2 { margin-bottom: 4px; }.notes-heading p { margin: 0; }.notes-count { color: var(--muted); font-size: 13px; white-space: nowrap; }.health-note-form { margin: 18px 0; }.health-note-form textarea { resize: vertical; min-height: 96px; }.note-form-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }.notes-list { display: grid; gap: 10px; }.health-note { border: 1px solid var(--border); border-left: 3px solid #93c5fd; border-radius: 6px; padding: 12px; }.health-note p { white-space: pre-wrap; line-height: 1.5; margin: 8px 0 0; }
 .audit-heading { gap: 16px; align-items: flex-start; }.audit-heading h2 { margin-bottom: 4px; }.audit-heading p { margin: 0; }.audit-search { margin-top: 4px; }.audit-result-count { margin: 8px 0; }.audit-action { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155; font-size: 12px; background: #f1f5f9; border-radius: 4px; padding: 3px 5px; }
 .partner-list { display: flex; flex-wrap: wrap; gap: 5px; min-width: 150px; }.partner-tag { background: #e0f2fe; color: #075985; border-radius: 999px; font-size: 12px; padding: 3px 7px; white-space: nowrap; }.admin-alert-count { color: var(--high); font-weight: 600; }
+
+/* Accessible Emoji Rating Selectors & Elder UX */
+.rating-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.rating-section label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.rating-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.emoji-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  min-height: 72px;
+  background: #f8fafc;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  color: var(--text);
+  font-weight: 500;
+}
+.emoji-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+.emoji-btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+.emoji-btn.selected {
+  background: #eff6ff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+.emoji-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.emoji-text {
+  font-size: 11px;
+  text-align: center;
+  color: #475569;
+  line-height: 1.2;
+}
+.emoji-btn.selected .emoji-text {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.voice-note-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.btn-voice {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-voice:hover { background: #e2e8f0; }
+.btn-voice.listening {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.checkin-success-banner {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  color: #166534;
+}
+.checkin-success-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.submit-btn-large {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+/* Caregiver Actionable Alert Cards & Loading States */
+.alert-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.alert-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.alert-card.high { border-left-color: var(--high); background: #fef2f2; }
+.alert-card.medium { border-left-color: var(--medium); background: #fffbeb; }
+.alert-card.low { border-left-color: var(--low); background: #f8fafc; }
+.alert-card.resolved { border-left-color: var(--ok); opacity: 0.85; background: #f0fdf4; }
+
+.alert-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.alert-type-title {
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: capitalize;
+}
+.trend-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.trend-tag.worsening { background: #fee2e2; color: #991b1b; }
+.trend-tag.improving { background: #dcfce7; color: #166534; }
+.trend-tag.stable { background: #f1f5f9; color: #475569; }
+
+.alert-elder-note {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.alert-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-left-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  gap: 10px;
+}
+
+.error-banner {
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 480px) {
+  .emoji-icon { font-size: 22px; }
+  .emoji-text { font-size: 10px; }
+  .emoji-btn { min-height: 60px; padding: 6px 2px; }
+}
+
+
