@@ -125,6 +125,7 @@ func (h *Handler) Elders(w http.ResponseWriter, r *http.Request) {
 	byUserID := map[int]int{}
 	for rows.Next() {
 		var item elder
+		item.Caregivers = []caregiver{}
 		var lastCheckin sql.NullTime
 		var avgMood, avgActivity sql.NullFloat64
 		if err := rows.Scan(&item.UserID, &item.FullName, &lastCheckin, &item.TotalCheckins, &item.CheckinsLast7Days, &avgMood, &avgActivity, &item.OpenAlertCount); err != nil {

@@ -2,34 +2,34 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import {
-  MoodVeryLowIcon,
-  MoodLowIcon,
-  MoodNeutralIcon,
-  MoodGoodIcon,
-  MoodGreatIcon,
-  ActivityRestIcon,
-  ActivityWalkIcon,
-  ActivityModerateIcon,
-  ActivityActiveIcon,
-  ActivityZapIcon,
-  CheckCircleIcon,
-  MicIcon,
-} from "../components/Icons";
+  Frown,
+  Meh,
+  Smile,
+  SmilePlus,
+  Sparkles,
+  Bed,
+  Footprints,
+  Home,
+  Activity as ActivityIcon,
+  Zap,
+  CheckCircle2,
+  Mic,
+} from "lucide-react";
 
 const MOOD_OPTIONS = [
-  { value: 1, label: "Very Low", icon: MoodVeryLowIcon, color: "#ef4444" },
-  { value: 2, label: "Low", icon: MoodLowIcon, color: "#f97316" },
-  { value: 3, label: "Okay", icon: MoodNeutralIcon, color: "#eab308" },
-  { value: 4, label: "Good", icon: MoodGoodIcon, color: "#3b82f6" },
-  { value: 5, label: "Great", icon: MoodGreatIcon, color: "#22c55e" },
+  { value: 1, label: "Very Low", icon: Frown, color: "#ef4444" },
+  { value: 2, label: "Low", icon: Meh, color: "#f97316" },
+  { value: 3, label: "Okay", icon: Smile, color: "#eab308" },
+  { value: 4, label: "Good", icon: SmilePlus, color: "#3b82f6" },
+  { value: 5, label: "Great", icon: Sparkles, color: "#22c55e" },
 ];
 
 const ACTIVITY_OPTIONS = [
-  { value: 1, label: "Resting", icon: ActivityRestIcon, color: "#64748b" },
-  { value: 2, label: "Light Walk", icon: ActivityWalkIcon, color: "#0284c7" },
-  { value: 3, label: "Moderate", icon: ActivityModerateIcon, color: "#0d9488" },
-  { value: 4, label: "Active", icon: ActivityActiveIcon, color: "#16a34a" },
-  { value: 5, label: "Very Active", icon: ActivityZapIcon, color: "#8b5cf6" },
+  { value: 1, label: "Resting", icon: Bed, color: "#64748b" },
+  { value: 2, label: "Light Walk", icon: Footprints, color: "#0284c7" },
+  { value: 3, label: "Moderate", icon: Home, color: "#0d9488" },
+  { value: 4, label: "Active", icon: ActivityIcon, color: "#16a34a" },
+  { value: 5, label: "Very Active", icon: Zap, color: "#8b5cf6" },
 ];
 
 interface CheckinResult {
@@ -119,14 +119,14 @@ export default function ElderCheckin() {
     }
   }
 
-  function renderMoodIcon(val: number, size = 24) {
+  function renderMoodIcon(val: number, size = 22) {
     const opt = MOOD_OPTIONS.find((m) => m.value === val);
     if (!opt) return null;
     const IconComp = opt.icon;
     return <IconComp size={size} color={opt.color} />;
   }
 
-  function renderActivityIcon(val: number, size = 24) {
+  function renderActivityIcon(val: number, size = 22) {
     const opt = ACTIVITY_OPTIONS.find((a) => a.value === val);
     if (!opt) return null;
     const IconComp = opt.icon;
@@ -162,7 +162,7 @@ export default function ElderCheckin() {
                     onClick={() => setMood(opt.value)}
                   >
                     <span className="emoji-icon" aria-hidden="true">
-                      <Icon size={30} color={isSelected ? opt.color : "#64748b"} />
+                      <Icon size={28} color={isSelected ? opt.color : "#64748b"} />
                     </span>
                     <span className="emoji-text">{opt.label}</span>
                   </button>
@@ -191,7 +191,7 @@ export default function ElderCheckin() {
                     onClick={() => setActivity(opt.value)}
                   >
                     <span className="emoji-icon" aria-hidden="true">
-                      <Icon size={30} color={isSelected ? opt.color : "#64748b"} />
+                      <Icon size={28} color={isSelected ? opt.color : "#64748b"} />
                     </span>
                     <span className="emoji-text">{opt.label}</span>
                   </button>
@@ -213,7 +213,7 @@ export default function ElderCheckin() {
                   onClick={handleVoiceNote}
                   title="Speak note"
                 >
-                  <MicIcon size={14} /> {isListening ? "Listening…" : "Voice Note"}
+                  <Mic size={14} /> {isListening ? "Listening…" : "Voice Note"}
                 </button>
               )}
             </div>
@@ -237,7 +237,7 @@ export default function ElderCheckin() {
         {result && (
           <div className="checkin-success-banner" role="alert">
             <div className="checkin-success-title">
-              <CheckCircleIcon size={20} color="#166534" /> Check-in saved successfully!
+              <CheckCircle2 size={20} color="#166534" /> Check-in saved successfully!
             </div>
             {result.anomalies_raised && result.anomalies_raised.length > 0 ? (
               <div style={{ marginTop: 6, fontSize: 14 }}>

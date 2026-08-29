@@ -2,19 +2,26 @@ import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
-  AlertTriangleIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  MessageSquareIcon,
-  RefreshCwIcon,
-  UserCheckIcon,
-} from "../components/Icons";
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  MessageSquare,
+  RefreshCw,
+  UserCheck,
+  Bell,
+  KeyRound,
+  LogOut,
+  Menu,
+  X,
+  HeartPulse,
+} from "lucide-react";
 
 function SeverityBadge({ severity }: { severity: string }) {
   return (
     <span className={`severity ${severity}`}>
-      <AlertTriangleIcon size={12} style={{ marginRight: 3, verticalAlign: "middle" }} />
+      <AlertTriangle size={12} style={{ marginRight: 3, verticalAlign: "middle" }} />
       {severity}
     </span>
   );
@@ -119,7 +126,7 @@ function ActionableAlertCard({
     <div className={`alert-card ${severityClass} ${isResolved ? "resolved" : ""}`}>
       <div className="alert-card-header">
         <div className="alert-type-title">
-          <AlertTriangleIcon size={18} />
+          <AlertTriangle size={18} />
           {alert.anomaly_type ? alert.anomaly_type.replace(/_/g, " ") : "Pattern Change"}
         </div>
         <div className="row" style={{ gap: 8 }}>
@@ -133,7 +140,7 @@ function ActionableAlertCard({
       </div>
 
       <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-        <ClockIcon size={14} />
+        <Clock size={14} />
         Detected: {new Date(alert.detected_at).toLocaleString()}
         {alert.duration_days && ` · Duration: ${alert.duration_days} day(s)`}
         {alert.deviation_magnitude && ` · Magnitude: ${alert.deviation_magnitude.toFixed(2)} σ`}
@@ -141,7 +148,7 @@ function ActionableAlertCard({
 
       {elderNote && (
         <div className="alert-elder-note">
-          <MessageSquareIcon size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <MessageSquare size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
             <strong>Elder Note:</strong> "{elderNote}"
           </div>
@@ -151,11 +158,11 @@ function ActionableAlertCard({
       <div className="alert-card-actions">
         {isResolved ? (
           <span style={{ color: "var(--ok)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-            <CheckCircleIcon size={16} /> Acknowledged
+            <CheckCircle2 size={16} /> Acknowledged
           </span>
         ) : (
           <button className="secondary" style={{ background: "var(--primary)", color: "white" }} onClick={() => onAck(alert.anomaly_id)}>
-            <UserCheckIcon size={14} /> Acknowledge Alert
+            <UserCheck size={14} /> Acknowledge Alert
           </button>
         )}
 
@@ -253,7 +260,7 @@ function ElderDetail({ userId, onBack, token }: { userId: number; onBack: () => 
       {error && (
         <div className="error-banner" style={{ marginTop: 12 }}>
           <span>{error}</span>
-          <button className="secondary" onClick={load}><RefreshCwIcon size={14} /> Retry</button>
+          <button className="secondary" onClick={load}><RefreshCw size={14} /> Retry</button>
         </div>
       )}
 
@@ -465,7 +472,8 @@ export function AccessManagement({ token }: { token: string }) {
 }
 
 export default function CaregiverDashboard() {
-  const { session } = useAuth();
+  const { session, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("triage");
   const [triage, setTriage] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -473,6 +481,7 @@ export default function CaregiverDashboard() {
   const [error, setError] = useState("");
   const [isLoadingTriage, setIsLoadingTriage] = useState(true);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function loadTriage() {
     try {
@@ -531,88 +540,166 @@ export default function CaregiverDashboard() {
     return () => { closed = true; if (reconnectTimer) clearTimeout(reconnectTimer); socket?.close(); };
   }, [session.token]);
 
-  if (selectedUser) {
-    return (
-      <div className="container">
-        <ElderDetail userId={selectedUser} token={session.token} onBack={() => { setSelectedUser(null); loadTriage(); loadNotifications(); }} />
-      </div>
-    );
+  const unreadCount = notifications.filter((n) => !n.IsRead).length;
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
   }
 
   return (
-    <div className="container">
-      <div className="nav-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "triage"} className={tab === "triage" ? "active" : ""} onClick={() => setTab("triage")}>Triage</button>
-        <button role="tab" aria-selected={tab === "notifications"} className={tab === "notifications" ? "active" : ""} onClick={() => setTab("notifications")}>
-          Notifications {notifications.filter((n) => !n.IsRead).length > 0 && `(${notifications.filter((n) => !n.IsRead).length})`}
-        </button>
-        <button role="tab" aria-selected={tab === "access"} className={tab === "access" ? "active" : ""} onClick={() => setTab("access")}>Access Management</button>
-      </div>
+    <div className="app-sidebar-layout">
+      {/* Mobile Backdrop */}
+      {mobileOpen && <div className="mobile-overlay" onClick={() => setMobileOpen(false)} />}
 
-      {error && (
-        <div className="error-banner">
-          <span>{error}</span>
-          <button className="secondary" onClick={() => { loadTriage(); loadNotifications(); }}><RefreshCwIcon size={14} /> Retry</button>
+      {/* Sidebar Navigation */}
+      <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-brand">
+            <HeartPulse size={24} color="var(--primary)" />
+            Baselium+
+            <span className="sidebar-brand-badge">Caregiver</span>
+          </div>
         </div>
-      )}
 
-      {tab === "triage" && (
-        <div className="card">
-          <h2>Your elders, worst-first</h2>
-          {isLoadingTriage ? (
-            <LoadingSpinner label="Loading assigned elders..." />
-          ) : triage.length === 0 ? (
-            <div className="empty-state">No elders assigned to you yet. Use the Access tab to assign elders.</div>
-          ) : (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>Elder</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {triage.map((t) => (
-                    <tr key={t.user_id}>
-                      <td><strong>{t.full_name}</strong></td>
-                      <td className="muted">{t.last_checkin ? new Date(t.last_checkin).toLocaleString() : "never"}</td>
-                      <td>{t.open_anomaly_count}</td>
-                      <td>{t.highest_open_severity ? <SeverityBadge severity={t.highest_open_severity} /> : <span className="muted">—</span>}</td>
-                      <td><button className="secondary" onClick={() => setSelectedUser(t.user_id)}>View Details</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <nav className="sidebar-nav" role="tablist">
+          <button
+            role="tab"
+            aria-selected={tab === "triage"}
+            className={`sidebar-item ${tab === "triage" ? "active" : ""}`}
+            onClick={() => { setTab("triage"); setSelectedUser(null); setMobileOpen(false); }}
+          >
+            <UserCheck size={18} />
+            <span>Triage & Elders</span>
+          </button>
+
+          <button
+            role="tab"
+            aria-selected={tab === "notifications"}
+            className={`sidebar-item ${tab === "notifications" ? "active" : ""}`}
+            onClick={() => { setTab("notifications"); setSelectedUser(null); setMobileOpen(false); }}
+          >
+            <Bell size={18} />
+            <span>Notifications</span>
+            {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
+          </button>
+
+          <button
+            role="tab"
+            aria-selected={tab === "access"}
+            className={`sidebar-item ${tab === "access" ? "active" : ""}`}
+            onClick={() => { setTab("access"); setSelectedUser(null); setMobileOpen(false); }}
+          >
+            <KeyRound size={18} />
+            <span>Access Management</span>
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="user-avatar">
+              {(session.full_name || session.email || "C")[0].toUpperCase()}
+            </div>
+            <div className="user-info">
+              <span className="user-name">{session.full_name || session.email}</span>
+              <span className="user-role">Caregiver Account</span>
+            </div>
+          </div>
+          <button className="btn-logout" onClick={handleLogout}>
+            <LogOut size={16} /> Log Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Workspace Area */}
+      <main className="main-workspace">
+        <header className="workspace-topbar">
+          <div className="workspace-title">
+            <h1>
+              {selectedUser ? "Elder Detail & Metrics" : tab === "triage" ? "Triage & Assigned Elders" : tab === "notifications" ? "Notifications & Alerts" : "Access Management"}
+            </h1>
+            <p className="workspace-subtitle">
+              {selectedUser ? "Review trend charts, alert history, and health notes" : tab === "triage" ? "Elders sorted worst-first by active severity" : tab === "notifications" ? "Live DB and WebSocket alert history" : "Assign elders and grant family member access"}
+            </p>
+          </div>
+          <button className="mobile-nav-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Navigation">
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </header>
+
+        <div className="container" style={{ paddingTop: 20 }}>
+          {error && (
+            <div className="error-banner">
+              <span>{error}</span>
+              <button className="secondary" onClick={() => { loadTriage(); loadNotifications(); }}><RefreshCw size={14} /> Retry</button>
             </div>
           )}
-        </div>
-      )}
 
-      {tab === "notifications" && (
-        <div className="card">
-          <h2>Recent notifications</h2>
-          {isLoadingNotifs ? (
-            <LoadingSpinner label="Loading notifications..." />
-          ) : notifications.length === 0 ? (
-            <div className="empty-state">No notifications yet. All assigned elders are currently within normal baseline patterns.</div>
+          {selectedUser ? (
+            <ElderDetail userId={selectedUser} token={session.token} onBack={() => { setSelectedUser(null); loadTriage(); loadNotifications(); }} />
           ) : (
-            <div className="table-scroll">
-              <table>
-                <thead><tr><th>When</th><th>Message</th><th>Status</th></tr></thead>
-                <tbody>
-                  {notifications.map((n) => (
-                    <tr key={n.NotificationID}>
-                      <td className="muted">{new Date(n.SentAt).toLocaleString()}</td>
-                      <td>{n.Message}</td>
-                      <td>{n.AcknowledgedAt ? <span style={{ color: "var(--ok)", fontWeight: 600 }}>Acked</span> : <span className="muted">Unread</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {tab === "triage" && (
+                <div className="card">
+                  <h2>Your elders, worst-first</h2>
+                  {isLoadingTriage ? (
+                    <LoadingSpinner label="Loading assigned elders..." />
+                  ) : triage.length === 0 ? (
+                    <div className="empty-state">No elders assigned to you yet. Use the Access tab to assign elders.</div>
+                  ) : (
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr><th>Elder</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                          {triage.map((t) => (
+                            <tr key={t.user_id}>
+                              <td><strong>{t.full_name}</strong></td>
+                              <td className="muted">{t.last_checkin ? new Date(t.last_checkin).toLocaleString() : "never"}</td>
+                              <td>{t.open_anomaly_count}</td>
+                              <td>{t.highest_open_severity ? <SeverityBadge severity={t.highest_open_severity} /> : <span className="muted">—</span>}</td>
+                              <td><button className="secondary" onClick={() => setSelectedUser(t.user_id)}>View Details</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "notifications" && (
+                <div className="card">
+                  <h2>Recent notifications</h2>
+                  {isLoadingNotifs ? (
+                    <LoadingSpinner label="Loading notifications..." />
+                  ) : notifications.length === 0 ? (
+                    <div className="empty-state">No notifications yet. All assigned elders are currently within normal baseline patterns.</div>
+                  ) : (
+                    <div className="table-scroll">
+                      <table>
+                        <thead><tr><th>When</th><th>Message</th><th>Status</th></tr></thead>
+                        <tbody>
+                          {notifications.map((n) => (
+                            <tr key={n.NotificationID}>
+                              <td className="muted">{new Date(n.SentAt).toLocaleString()}</td>
+                              <td>{n.Message}</td>
+                              <td>{n.AcknowledgedAt ? <span style={{ color: "var(--ok)", fontWeight: 600 }}>Acked</span> : <span className="muted">Unread</span>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === "access" && <AccessManagement token={session.token} />}
+            </>
           )}
         </div>
-      )}
-
-      {tab === "access" && <AccessManagement token={session.token} />}
+      </main>
     </div>
   );
 }

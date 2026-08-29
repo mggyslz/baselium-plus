@@ -12,6 +12,9 @@ function TopBar() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   if (!session) return null;
+  // Caregiver and Admin pages have dedicated sidebar navigation
+  if (session.role === "caregiver" || session.role === "admin") return null;
+
   return (
     <div className="topbar">
       <h1>Baselium+</h1>
