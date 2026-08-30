@@ -17,11 +17,11 @@ A behavioral monitoring system for the elderly that builds a **per-elder statist
 | **Family Viewer** | Read-only status view, high-severity alerts only |
 
 ## Tech stack
-- **Mobile:** React Native
+- **Elder client (current):** responsive React web check-in screen (React Native deferred)
 - **Web:** React
 - **Backend:** Go (Gin/Echo) + sqlc
 - **Database:** PostgreSQL
-- **Notifications:** Firebase Cloud Messaging + WebSockets
+- **Notifications:** WebSockets for active dashboards (FCM deferred; see D13)
 - **Auth:** JWT, role-based
 
 ## Repo layout (backend)

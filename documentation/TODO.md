@@ -115,6 +115,19 @@ accessible experience before adding broad new backend modules:
 - [ ] Scheduled report emailing: auto-generate and email a weekly PDF report
       to caregivers instead of manual download
 
+### Frontend follow-up (priority order)
+- [ ] Make Family Viewer access invitation-only: remove or restrict public family signup so
+      a caregiver grant is the sole supported access path, preserving the D6 privacy boundary.
+- [ ] Add offline-ready elder check-ins: queue a completed check-in locally when offline,
+      show its pending state clearly, and synchronize it automatically after reconnecting.
+- [x] Expand frontend tests for elder check-in submission and errors, Family Viewer's restricted
+      view, caregiver triage/acknowledgement/report download, and WebSocket-driven updates.
+- [x] Replace `frontend/README.md`'s default Vite content with frontend setup, environment
+      variables, role routes, test commands, and API configuration; reconcile the main docs'
+      React Native and offline-ready statements with the delivered responsive web app.
+- [x] Code-split role dashboards with lazy-loaded routes to reduce the production JavaScript
+      bundle (currently above Vite's 500 kB warning threshold).
+
 ### Security / reliability (RA 10173 + 5-minute alert SLA)
 - [x] JWT refresh/rotation instead of a flat ~24h expiry with no refresh token
 - [x] Login rate limiting / attempt throttling

@@ -12,7 +12,7 @@
 - Support **read-only Family Viewer** access, notified only on high-severity anomalies.
 - Comply with the **Data Privacy Act of 2012 (RA 10173)**: encryption in transit/at rest, role-restricted access, audit logging.
 - Stay **hardware-free** — no wearables/sensors, no ML model. Just self-reported check-ins + rolling statistics.
-- Offline Ready
+- Offline-ready synchronization is planned; the current responsive web client requires a connection.
 
 ## Architecture
 **4-layer architecture** (per the proposal's Architectural Diagram):
@@ -32,12 +32,12 @@
 **Tech stack**
 | Layer | Choice |
 |---|---|
-| Mobile | React Native |
+| Elder client (current) | Responsive React web check-in screen; React Native mobile client deferred |
 | Web | React |
 | Backend | Go (Gin/Echo) + sqlc |
 | Database | PostgreSQL |
 | Auth | JWT, role-based (elder / caregiver / family) |
-| Push notifications | Firebase Cloud Messaging (FCM) |
+| Push notifications | WebSockets for active dashboard sessions; FCM deferred (see D13) |
 | Live updates | WebSockets (gorilla/websocket) |
 
 **Actors:** Elder, Caregiver, Family Viewer (see `family_access` and `user_caregiver` tables — many-to-many between elders and caregivers).

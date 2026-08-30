@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "../shared/api/client";
 import type { FamilyMember } from "../shared/types/models";
-import { AccessManagement } from "../features/caregiver/pages/CaregiverDashboardPage";
+import { AccessManagement, ElderDetail } from "../features/caregiver/pages/CaregiverDashboardPage";
 
 const TOKEN = "test-token";
 
@@ -21,6 +21,10 @@ let assignSpy: ReturnType<typeof vi.spyOn>;
 let grantSpy: ReturnType<typeof vi.spyOn>;
 let revokeSpy: ReturnType<typeof vi.spyOn>;
 let paginatedEldersSpy: ReturnType<typeof vi.spyOn>;
+let trendSpy: ReturnType<typeof vi.spyOn>;
+let alertsSpy: ReturnType<typeof vi.spyOn>;
+let acknowledgeSpy: ReturnType<typeof vi.spyOn>;
+let downloadReportSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   membersSpy = vi.spyOn(api, "familyMembers").mockResolvedValue([member]);
@@ -55,10 +59,35 @@ beforeEach(() => {
     limit: 6,
     total_pages: 1,
   });
+  trendSpy = vi.spyOn(api, "trend").mockResolvedValue({ points: [], baseline_mood: 0 });
+  alertsSpy = vi.spyOn(api, "alerts").mockResolvedValue([{ anomaly_id: 8, anomaly_type: "mood_deviation", severity: "high", detected_at: "2026-08-30T10:00:00Z", deviation_metric: "mood", duration_days: 1, is_resolved: false }]);
+  acknowledgeSpy = vi.spyOn(api, "ackNotification").mockResolvedValue(null);
+  downloadReportSpy = vi.spyOn(api, "downloadReport").mockResolvedValue(new Blob(["report"]));
+  vi.stubGlobal("confirm", vi.fn(() => false));
+  vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:test-report"), revokeObjectURL: vi.fn() });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("ElderDetail actions", () => {
+  it("acknowledges an alert and downloads the Excel report", async () => {
+    const onBack = vi.fn();
+    render(<ElderDetail userId={12} token={TOKEN} onBack={onBack} />);
+
+    await screen.findByText(/mood deviation/i);
+    await userEvent.click(screen.getByRole("button", { name: "Acknowledge Alert" }));
+    expect(acknowledgeSpy).toHaveBeenCalledWith(TOKEN, 8);
+
+    await userEvent.click(screen.getByRole("button", { name: "Download Excel report" }));
+    expect(downloadReportSpy).toHaveBeenCalledWith(TOKEN, 12);
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(trendSpy).toHaveBeenCalledWith(TOKEN, 12);
+    expect(alertsSpy).toHaveBeenCalledWith(TOKEN, 12);
+  });
 });
 
 describe("Elder Profile Cards & Pagination", () => {
