@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { api } from "../api";
-import type { FamilyMember } from "../types";
-import { AccessManagement } from "../pages/CaregiverDashboard";
+import { api } from "../shared/api/client";
+import type { FamilyMember } from "../shared/types/models";
+import { AccessManagement } from "../features/caregiver/pages/CaregiverDashboardPage";
 
 const TOKEN = "test-token";
 

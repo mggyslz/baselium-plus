@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../../auth/auth.context";
 import { useNavigate } from "react-router-dom";
-import type { PaginatedEldersResponse } from "../types";
+import type { PaginatedEldersResponse } from "../../../shared/types/models";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -117,8 +117,8 @@ function ActionableAlertCard({
   readOnly = false,
 }: {
   alert: any;
-  onAck: (id: string) => void;
-  onReview: (id: string, status: string) => void;
+  onAck: (id: number) => void;
+  onReview: (id: number, status: "reviewed" | "false_positive") => void;
   readOnly?: boolean;
 }) {
   const isResolved = alert.is_resolved;
@@ -215,7 +215,7 @@ export function ElderDetail({ userId, onBack, token, readOnly = false }: { userI
 
   useEffect(() => { load(); }, [userId]);
 
-  async function ack(anomalyId: string) {
+  async function ack(anomalyId: number) {
     try {
       await api.ackNotification(token, anomalyId);
       load();
@@ -224,7 +224,7 @@ export function ElderDetail({ userId, onBack, token, readOnly = false }: { userI
     }
   }
 
-  async function review(anomalyId: string, status: string) {
+  async function review(anomalyId: number, status: "reviewed" | "false_positive") {
     try { await api.reviewAlert(token, anomalyId, status); load(); } catch (err: any) { setError(err.message); }
   }
 

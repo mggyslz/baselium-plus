@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
-import type { ApiPayload } from "../types";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../auth.context";
+import type { ApiPayload } from "../../../shared/types/models";
 import { HeartPulse, Mail, Lock, User, Eye, EyeOff, AlertCircle, HeartHandshake, Stethoscope, Users } from "lucide-react";
 
 export default function Signup() {

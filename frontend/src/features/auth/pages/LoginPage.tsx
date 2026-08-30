@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../auth.context";
 import { HeartPulse, Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
 
 export default function Login() {

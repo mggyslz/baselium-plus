@@ -5,6 +5,8 @@ export interface Session {
 	refresh_token?: string;
 	access_expires_at?: string;
   role: Role;
+  email?: string;
+  full_name?: string;
   [key: string]: unknown;
 }
 
@@ -13,7 +15,7 @@ export type ApiParams = Record<string, string | number | boolean>;
 export type ApiPayload = Record<string, unknown>;
 
 export interface Checkin { checkin_id: number; checkin_time: string; mood: number; activity_level: number; notes?: string }
-export interface CheckinResult { anomalies_raised?: unknown[] }
+export interface CheckinResult { anomalies_raised?: Array<{ severity: string; type: string }> }
 export interface Trend { points: { time: string; mood: number; activity: number }[]; baseline_mood: number }
 export interface Alert { anomaly_id: number; detected_at: string; anomaly_type: string; severity: string; deviation_metric: string; deviation_magnitude?: number; duration_days: number; is_resolved: boolean; trend_direction?: "worsening" | "stable" | "improving"; review_status?: "reviewed" | "false_positive"; notes?: string; context_note?: string }
 export interface TriageItem { user_id: number; full_name: string; last_checkin?: string; open_anomaly_count: number; highest_open_severity?: string }

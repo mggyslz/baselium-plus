@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { api } from "../api";
+import { api } from "../shared/api/client";
 
 // Mock useAuth before importing ElderCheckin
 const mockSession = {
@@ -13,7 +13,7 @@ const mockSession = {
   full_name: "Elder Test",
 };
 
-vi.mock("../AuthContext", () => ({
+vi.mock("../features/auth/auth.context", () => ({
   useAuth: () => ({
     session: mockSession,
     login: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("../AuthContext", () => ({
   }),
 }));
 
-import ElderCheckin from "../pages/ElderCheckin";
+import ElderCheckin from "../features/elder/pages/ElderCheckinPage";
 
 let checkinHistorySpy: ReturnType<typeof vi.spyOn>;
 let submitCheckinSpy: ReturnType<typeof vi.spyOn>;
@@ -29,7 +29,7 @@ let submitCheckinSpy: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   checkinHistorySpy = vi.spyOn(api, "checkinHistory").mockResolvedValue([
     {
-      checkin_id: "chk-1",
+      checkin_id: 1,
       checkin_time: "2026-08-29T10:00:00Z",
       mood: 4,
       activity_level: 3,
@@ -103,4 +103,3 @@ describe("ElderCheckin", () => {
     expect(await screen.findByText("Network error submitting check-in")).toBeInTheDocument();
   });
 });
-

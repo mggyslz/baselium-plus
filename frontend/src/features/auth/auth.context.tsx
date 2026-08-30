@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api } from "./api";
-import type { Session } from "./types";
+import { api } from "../../shared/api/client";
+import type { Session } from "../../shared/types/models";
 
 interface AuthContextValue { session: Session | null; login: (data: Session) => void; logout: () => void }
 const AuthContext = createContext<AuthContextValue | null>(null);

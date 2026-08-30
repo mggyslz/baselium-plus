@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api } from "../api";
+import { api } from "../shared/api/client";
 
 // Mock global fetch so no network is touched. Each test controls the response.
 function mockFetch(status: number, body: unknown) {

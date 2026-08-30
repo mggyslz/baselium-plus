@@ -1,4 +1,4 @@
-import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, HealthNote, Notification, PaginatedEldersResponse, Session, TriageItem, Trend } from "./types";
+import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, HealthNote, Notification, PaginatedEldersResponse, Session, TriageItem, Trend } from "../types/models";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../../auth/auth.context";
 import { useNavigate } from "react-router-dom";
-import { ElderDetail, ElderProfileCardsView } from "./CaregiverDashboard";
-import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview } from "../types";
+import { ElderDetail, ElderProfileCardsView } from "../../elder-profiles/components/ElderProfileViews";
+import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview } from "../../../shared/types/models";
 import {
   BarChart3,
   Users,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../../auth/auth.context";
 import {
   Frown,
   Meh,
@@ -34,17 +34,8 @@ const ACTIVITY_OPTIONS = [
   { value: 5, label: "Very Active", icon: Zap, color: "#8b5cf6" },
 ];
 
-interface CheckinResult {
-  anomalies_raised?: Array<{ severity: string; type: string }>;
-}
-
-interface CheckinRecord {
-  checkin_id: string;
-  checkin_time: string;
-  mood: number;
-  activity_level: number;
-  notes?: string;
-}
+type CheckinResult = import("../../../shared/types/models").CheckinResult;
+type CheckinRecord = import("../../../shared/types/models").Checkin;
 
 export default function ElderCheckin() {
   const { session } = useAuth();

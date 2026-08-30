@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
-import { useAuth } from "../AuthContext";
+import { api } from "../../../shared/api/client";
+import { useAuth } from "../../auth/auth.context";
 
 export default function FamilyStatus() {
   const { session } = useAuth();
