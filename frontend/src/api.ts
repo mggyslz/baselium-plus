@@ -1,4 +1,4 @@
-import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, HealthNote, Notification, Session, TriageItem, Trend } from "./types";
+import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview, Alert, ApiErrorResponse, ApiParams, ApiPayload, Checkin, CheckinResult, FamilyMember, FamilyStatusData, HealthNote, Notification, PaginatedEldersResponse, Session, TriageItem, Trend } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -40,6 +40,7 @@ export const api = {
   createHealthNote: (token: string, userId: number, note: string) => request<{ note_id: number }>("/api/health-notes", { method: "POST", body: { user_id: userId, note }, token }),
   adminAuditLogs: (token: string) => request<AdminAuditLog[]>("/api/admin/audit-logs", { token }),
   adminElders: (token: string) => request<AdminElder[]>("/api/admin/elders", { token }),
+  paginatedElders: (token: string, page = 1, limit = 6) => request<PaginatedEldersResponse>("/api/caregiver/elders", { token, params: { page, limit } }),
   downloadReport: async (token: string, userId: number) => {
     const res = await fetch(`${BASE_URL}/api/dashboard/report?user_id=${userId}`, { headers: { Authorization: "Bearer " + token } });
     if (!res.ok) throw new Error("Unable to download report");

@@ -46,17 +46,25 @@ afterEach(() => {
 });
 
 describe("ElderCheckin", () => {
-  it("renders emoji rating options and check-in history", async () => {
+  it("renders rating options and toggleable check-in history", async () => {
     render(<ElderCheckin />);
     expect(screen.getByText("How are you feeling today?")).toBeInTheDocument();
-    expect(await screen.findByText("Had a nice walk")).toBeInTheDocument();
 
-    // Check emoji options exist
+    // Check rating options exist
     expect(screen.getByRole("radio", { name: "4 - Good" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "3 - Moderate" })).toBeInTheDocument();
+
+    // Collapsible history should be collapsed by default
+    expect(screen.queryByText("Had a nice walk")).not.toBeInTheDocument();
+
+    // Toggle history section open
+    const historyToggle = screen.getByRole("button", { name: /Your recent check-ins/i });
+    await userEvent.click(historyToggle);
+
+    expect(await screen.findByText("Had a nice walk")).toBeInTheDocument();
   });
 
-  it("allows selecting mood and activity emojis and submitting check-in", async () => {
+  it("allows selecting mood and activity rating options and submitting check-in", async () => {
     render(<ElderCheckin />);
 
     // Select Great mood (5) and Active activity (4)
@@ -73,7 +81,7 @@ describe("ElderCheckin", () => {
     const noteInput = screen.getByLabelText(/Anything you'd like to share?/i);
     await userEvent.type(noteInput, "Feeling energetic today!");
 
-    const submitBtn = screen.getByRole("button", { name: "Submit Check-in ✨" });
+    const submitBtn = screen.getByRole("button", { name: "Submit Check-in" });
     await userEvent.click(submitBtn);
 
     expect(submitCheckinSpy).toHaveBeenCalledWith(mockSession.token, {
@@ -89,7 +97,7 @@ describe("ElderCheckin", () => {
     submitCheckinSpy.mockRejectedValue(new Error("Network error submitting check-in"));
     render(<ElderCheckin />);
 
-    const submitBtn = screen.getByRole("button", { name: "Submit Check-in ✨" });
+    const submitBtn = screen.getByRole("button", { name: "Submit Check-in" });
     await userEvent.click(submitBtn);
 
     expect(await screen.findByText("Network error submitting check-in")).toBeInTheDocument();

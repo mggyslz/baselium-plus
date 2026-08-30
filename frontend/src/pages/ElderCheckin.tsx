@@ -14,6 +14,8 @@ import {
   Zap,
   CheckCircle2,
   Mic,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const MOOD_OPTIONS = [
@@ -53,6 +55,7 @@ export default function ElderCheckin() {
   const [result, setResult] = useState<CheckinResult | null>(null);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<CheckinRecord[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
@@ -147,7 +150,7 @@ export default function ElderCheckin() {
             <label id="mood-label">
               1. How is your mood today?
             </label>
-            <div className="emoji-grid" role="radiogroup" aria-labelledby="mood-label">
+            <div className="rating-grid" role="radiogroup" aria-labelledby="mood-label">
               {MOOD_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = mood === opt.value;
@@ -158,13 +161,13 @@ export default function ElderCheckin() {
                     role="radio"
                     aria-checked={isSelected}
                     aria-label={`${opt.value} - ${opt.label}`}
-                    className={`emoji-btn ${isSelected ? "selected" : ""}`}
+                    className={`rating-btn ${isSelected ? "selected" : ""}`}
                     onClick={() => setMood(opt.value)}
                   >
-                    <span className="emoji-icon" aria-hidden="true">
+                    <span className="rating-icon" aria-hidden="true">
                       <Icon size={28} color={isSelected ? opt.color : "#64748b"} />
                     </span>
-                    <span className="emoji-text">{opt.label}</span>
+                    <span className="rating-text">{opt.label}</span>
                   </button>
                 );
               })}
@@ -176,7 +179,7 @@ export default function ElderCheckin() {
             <label id="activity-label">
               2. How active were you today?
             </label>
-            <div className="emoji-grid" role="radiogroup" aria-labelledby="activity-label">
+            <div className="rating-grid" role="radiogroup" aria-labelledby="activity-label">
               {ACTIVITY_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = activity === opt.value;
@@ -187,13 +190,13 @@ export default function ElderCheckin() {
                     role="radio"
                     aria-checked={isSelected}
                     aria-label={`${opt.value} - ${opt.label}`}
-                    className={`emoji-btn ${isSelected ? "selected" : ""}`}
+                    className={`rating-btn ${isSelected ? "selected" : ""}`}
                     onClick={() => setActivity(opt.value)}
                   >
-                    <span className="emoji-icon" aria-hidden="true">
+                    <span className="rating-icon" aria-hidden="true">
                       <Icon size={28} color={isSelected ? opt.color : "#64748b"} />
                     </span>
-                    <span className="emoji-text">{opt.label}</span>
+                    <span className="rating-text">{opt.label}</span>
                   </button>
                 );
               })}
@@ -230,7 +233,7 @@ export default function ElderCheckin() {
           {error && <div className="error" style={{ fontSize: 14 }}>{error}</div>}
 
           <button type="submit" className="submit-btn-large" disabled={submitting}>
-            {submitting ? "Saving Check-in…" : "Submit Check-in ✨"}
+            {submitting ? "Saving Check-in…" : "Submit Check-in"}
           </button>
         </form>
 
@@ -254,40 +257,64 @@ export default function ElderCheckin() {
 
       {/* History */}
       <div className="card">
-        <h2 style={{ fontSize: 18 }}>Your recent check-ins</h2>
-        {history.length === 0 && <div className="empty-state">No check-ins logged yet.</div>}
-        {history.length > 0 && (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>Mood</th>
-                  <th>Activity</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.checkin_id}>
-                    <td>{new Date(h.checkin_time).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
-                    <td>
-                      <div className="row" style={{ gap: 6 }}>
-                        {renderMoodIcon(h.mood, 20)}
-                        <span>{h.mood}/5</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="row" style={{ gap: 6 }}>
-                        {renderActivityIcon(h.activity_level, 20)}
-                        <span>{h.activity_level}/5</span>
-                      </div>
-                    </td>
-                    <td className="muted">{h.notes || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <button
+          type="button"
+          className="collapsible-header"
+          onClick={() => setIsHistoryOpen((prev) => !prev)}
+          aria-expanded={isHistoryOpen}
+          aria-controls="checkin-history-content"
+        >
+          <h2 style={{ fontSize: 18, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            Your recent check-ins
+            {history.length > 0 && (
+              <span className="muted" style={{ fontSize: 14, fontWeight: "normal" }}>
+                ({history.length})
+              </span>
+            )}
+          </h2>
+          <span className="muted" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 14 }}>
+            {isHistoryOpen ? "Hide" : "Show"}
+            {isHistoryOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </span>
+        </button>
+
+        {isHistoryOpen && (
+          <div id="checkin-history-content" style={{ marginTop: 16 }}>
+            {history.length === 0 && <div className="empty-state">No check-ins logged yet.</div>}
+            {history.length > 0 && (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date & Time</th>
+                      <th>Mood</th>
+                      <th>Activity</th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.checkin_id}>
+                        <td>{new Date(h.checkin_time).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                        <td>
+                          <div className="row" style={{ gap: 6 }}>
+                            {renderMoodIcon(h.mood, 20)}
+                            <span>{h.mood}/5</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="row" style={{ gap: 6 }}>
+                            {renderActivityIcon(h.activity_level, 20)}
+                            <span>{h.activity_level}/5</span>
+                          </div>
+                        </td>
+                        <td className="muted">{h.notes || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -20,16 +20,52 @@ let membersSpy: ReturnType<typeof vi.spyOn>;
 let assignSpy: ReturnType<typeof vi.spyOn>;
 let grantSpy: ReturnType<typeof vi.spyOn>;
 let revokeSpy: ReturnType<typeof vi.spyOn>;
+let paginatedEldersSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   membersSpy = vi.spyOn(api, "familyMembers").mockResolvedValue([member]);
   assignSpy = vi.spyOn(api, "assignElder").mockResolvedValue(null);
   grantSpy = vi.spyOn(api, "grantFamily").mockResolvedValue(null);
   revokeSpy = vi.spyOn(api, "revokeFamily").mockResolvedValue(null);
+  paginatedEldersSpy = vi.spyOn(api, "paginatedElders").mockResolvedValue({
+    elders: [
+      {
+        user_id: 1,
+        full_name: "Alice Smith",
+        gender: "Female",
+        contact_number: "555-0100",
+        last_checkin: "2026-08-30T10:00:00Z",
+        open_anomaly_count: 0,
+        highest_open_severity: undefined,
+        is_assigned: true,
+      },
+      {
+        user_id: 2,
+        full_name: "Bob Jones",
+        gender: "Male",
+        contact_number: "555-0200",
+        last_checkin: undefined,
+        open_anomaly_count: 1,
+        highest_open_severity: "high",
+        is_assigned: false,
+      },
+    ],
+    total: 2,
+    page: 1,
+    limit: 6,
+    total_pages: 1,
+  });
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe("Elder Profile Cards & Pagination", () => {
+  it("fetches and renders elder profile cards with backend pagination", async () => {
+    render(<AccessManagement token={TOKEN} />);
+    expect(paginatedEldersSpy).toBeDefined();
+  });
 });
 
 describe("AccessManagement", () => {

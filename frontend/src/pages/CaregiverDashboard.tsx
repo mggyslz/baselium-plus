@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
+import type { PaginatedEldersResponse } from "../types";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -113,10 +114,12 @@ function ActionableAlertCard({
   alert,
   onAck,
   onReview,
+  readOnly = false,
 }: {
   alert: any;
   onAck: (id: string) => void;
   onReview: (id: string, status: string) => void;
+  readOnly?: boolean;
 }) {
   const isResolved = alert.is_resolved;
   const severityClass = alert.severity?.toLowerCase() || "low";
@@ -155,7 +158,7 @@ function ActionableAlertCard({
         </div>
       )}
 
-      <div className="alert-card-actions">
+      {!readOnly && <div className="alert-card-actions">
         {isResolved ? (
           <span style={{ color: "var(--ok)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
             <CheckCircle2 size={16} /> Acknowledged
@@ -182,12 +185,12 @@ function ActionableAlertCard({
             Status: <strong>{alert.review_status.replace(/_/g, " ")}</strong>
           </span>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
 
-function ElderDetail({ userId, onBack, token }: { userId: number; onBack: () => void; token: string }) {
+export function ElderDetail({ userId, onBack, token, readOnly = false }: { userId: number; onBack: () => void; token: string; readOnly?: boolean }) {
   const [trend, setTrend] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [error, setError] = useState("");
@@ -253,8 +256,8 @@ function ElderDetail({ userId, onBack, token }: { userId: number; onBack: () => 
       <div className="spread">
         <button className="link-btn" onClick={onBack}>&larr; Back to triage</button>
         <div>
-          <button className="secondary" onClick={downloadReport}>Download Excel report</button>{" "}
-          <button className="secondary" onClick={resetBaseline}>Reset baseline</button>
+          {!readOnly && <><button className="secondary" onClick={downloadReport}>Download Excel report</button>{" "}
+          <button className="secondary" onClick={resetBaseline}>Reset baseline</button></>}
         </div>
       </div>
       {error && (
@@ -298,7 +301,7 @@ function ElderDetail({ userId, onBack, token }: { userId: number; onBack: () => 
             {alerts.length > 0 && (
               <div className="alert-card-grid">
                 {alerts.map((a) => (
-                  <ActionableAlertCard key={a.anomaly_id} alert={a} onAck={ack} onReview={review} />
+                  <ActionableAlertCard key={a.anomaly_id} alert={a} onAck={ack} onReview={review} readOnly={readOnly} />
                 ))}
               </div>
             )}
@@ -306,7 +309,180 @@ function ElderDetail({ userId, onBack, token }: { userId: number; onBack: () => 
         </>
       )}
 
-      <HealthNotes userId={userId} token={token} />
+      {!readOnly && <HealthNotes userId={userId} token={token} />}
+    </div>
+  );
+}
+
+export function ElderProfileCardsView({
+  token,
+  onSelectElder,
+  onAssignElder,
+  allowAssignment = true,
+}: {
+  token: string;
+  onSelectElder: (userId: number) => void;
+  onAssignElder?: () => void;
+  allowAssignment?: boolean;
+}) {
+  const [data, setData] = useState<PaginatedEldersResponse | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [assigningId, setAssigningId] = useState<number | null>(null);
+
+  async function loadElders(p: number) {
+    try {
+      setIsLoading(true);
+      setError("");
+      const res = await api.paginatedElders(token, p, limit);
+      setData(res);
+    } catch (err: any) {
+      setError(err.message || "Failed to load elders list.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadElders(page);
+  }, [token, page]);
+
+  async function handleAssign(elderId: number) {
+    try {
+      setAssigningId(elderId);
+      await api.assignElder(token, elderId);
+      await loadElders(page);
+      if (onAssignElder) onAssignElder();
+    } catch (err: any) {
+      setError(err.message || "Failed to assign elder.");
+    } finally {
+      setAssigningId(null);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="spread" style={{ marginBottom: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18 }}>Elder Directory & Profiles</h2>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            Select an elder's profile card to view metrics, trends, and care details.
+          </p>
+        </div>
+        {data && (
+          <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>
+            {data.total} {data.total === 1 ? "elder" : "elders"} total
+          </span>
+        )}
+      </div>
+
+      {error && <div className="error" style={{ marginBottom: 12 }}>{error}</div>}
+
+      {isLoading ? (
+        <LoadingSpinner label="Loading elder profile cards…" />
+      ) : !data || data.elders.length === 0 ? (
+        <div className="empty-state">No elders registered in the system yet.</div>
+      ) : (
+        <>
+          <div className="elder-cards-grid">
+            {data.elders.map((elder) => {
+              const initials = elder.full_name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase() || "E";
+
+              return (
+                <div className="elder-profile-card" key={elder.user_id}>
+                  <div>
+                    <div className="elder-card-header">
+                      <div className="elder-avatar" aria-hidden="true">{initials}</div>
+                      <div className="elder-card-meta">
+                        <h3 className="elder-card-name" title={elder.full_name}>{elder.full_name}</h3>
+                        <span className="elder-card-id">Elder ID #{elder.user_id}</span>
+                      </div>
+                    </div>
+
+                    <div className="elder-card-body" style={{ marginTop: 14 }}>
+                      <div className="elder-card-row">
+                        <span className="muted">Last Check-in</span>
+                        <strong>
+                          {elder.last_checkin
+                            ? new Date(elder.last_checkin).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                            : "No check-ins"}
+                        </strong>
+                      </div>
+                      <div className="elder-card-row">
+                        <span className="muted">Alert Status</span>
+                        {elder.highest_open_severity ? (
+                          <SeverityBadge severity={elder.highest_open_severity} />
+                        ) : (
+                          <span style={{ color: "var(--ok)", fontWeight: 600, fontSize: 12 }}>Normal</span>
+                        )}
+                      </div>
+                      <div className="elder-card-row">
+                        <span className="muted">Caregiver Status</span>
+                        {elder.is_assigned ? (
+                          <span style={{ color: "var(--primary)", fontWeight: 600, fontSize: 12 }}>Assigned to you</span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="elder-card-footer">
+                    {elder.is_assigned || !allowAssignment ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelectElder(elder.user_id)}
+                      >
+                        Select Profile
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={assigningId === elder.user_id}
+                        onClick={() => handleAssign(elder.user_id)}
+                      >
+                        {assigningId === elder.user_id ? "Assigning…" : "Assign to Me"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pagination-bar">
+            <span className="pagination-info">
+              Page {data.page} of {data.total_pages || 1}
+            </span>
+            <div className="pagination-controls">
+              <button
+                type="button"
+                className="pagination-btn"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              >
+                ← Previous
+              </button>
+              <button
+                type="button"
+                className="pagination-btn"
+                disabled={page >= data.total_pages || isLoading}
+                onClick={() => setPage((prev) => prev + 1)}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -640,33 +816,41 @@ export default function CaregiverDashboard() {
           ) : (
             <>
               {tab === "triage" && (
-                <div className="card">
-                  <h2>Your elders, worst-first</h2>
-                  {isLoadingTriage ? (
-                    <LoadingSpinner label="Loading assigned elders..." />
-                  ) : triage.length === 0 ? (
-                    <div className="empty-state">No elders assigned to you yet. Use the Access tab to assign elders.</div>
-                  ) : (
-                    <div className="table-scroll">
-                      <table>
-                        <thead>
-                          <tr><th>Elder</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
-                        </thead>
-                        <tbody>
-                          {triage.map((t) => (
-                            <tr key={t.user_id}>
-                              <td><strong>{t.full_name}</strong></td>
-                              <td className="muted">{t.last_checkin ? new Date(t.last_checkin).toLocaleString() : "never"}</td>
-                              <td>{t.open_anomaly_count}</td>
-                              <td>{t.highest_open_severity ? <SeverityBadge severity={t.highest_open_severity} /> : <span className="muted">—</span>}</td>
-                              <td><button className="secondary" onClick={() => setSelectedUser(t.user_id)}>View Details</button></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                <>
+                  <ElderProfileCardsView
+                    token={session.token}
+                    onSelectElder={(id) => setSelectedUser(id)}
+                    onAssignElder={() => loadTriage()}
+                  />
+
+                  <div className="card" style={{ marginTop: 20 }}>
+                    <h2>Your assigned elders, worst-first</h2>
+                    {isLoadingTriage ? (
+                      <LoadingSpinner label="Loading assigned elders..." />
+                    ) : triage.length === 0 ? (
+                      <div className="empty-state">No elders assigned to you yet. Select "Assign to Me" on a profile card above or use the Access tab.</div>
+                    ) : (
+                      <div className="table-scroll">
+                        <table>
+                          <thead>
+                            <tr><th>Elder</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
+                          </thead>
+                          <tbody>
+                            {triage.map((t) => (
+                              <tr key={t.user_id}>
+                                <td><strong>{t.full_name}</strong></td>
+                                <td className="muted">{t.last_checkin ? new Date(t.last_checkin).toLocaleString() : "never"}</td>
+                                <td>{t.open_anomaly_count}</td>
+                                <td>{t.highest_open_severity ? <SeverityBadge severity={t.highest_open_severity} /> : <span className="muted">—</span>}</td>
+                                <td><button className="secondary" onClick={() => setSelectedUser(t.user_id)}>View Details</button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
 
               {tab === "notifications" && (

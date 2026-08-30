@@ -29,6 +29,103 @@ type triageRow struct {
 	LastCheckin      *time.Time `json:"last_checkin"`
 }
 
+type elderCardRow struct {
+	UserID           int        `json:"user_id"`
+	FullName         string     `json:"full_name"`
+	Gender           *string    `json:"gender"`
+	ContactNumber    *string    `json:"contact_number"`
+	LastCheckin      *time.Time `json:"last_checkin"`
+	OpenAnomalyCount int        `json:"open_anomaly_count"`
+	HighestSeverity  *string    `json:"highest_open_severity"`
+	IsAssigned       bool       `json:"is_assigned"`
+}
+
+type paginatedEldersResponse struct {
+	Elders     []elderCardRow `json:"elders"`
+	Total      int            `json:"total"`
+	Page       int            `json:"page"`
+	Limit      int            `json:"limit"`
+	TotalPages int            `json:"total_pages"`
+}
+
+const maxEldersPageSize = 50
+
+// PaginatedElders returns a page of elder profile cards using DB-level LIMIT and OFFSET.
+func (h *Handler) PaginatedElders(w http.ResponseWriter, r *http.Request) {
+	claims := auth.FromContext(r.Context())
+
+	page := 1
+	if pStr := r.URL.Query().Get("page"); pStr != "" {
+		if p, err := strconv.Atoi(pStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	limit := 6
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+	if limit > maxEldersPageSize {
+		limit = maxEldersPageSize
+	}
+
+	offset := (page - 1) * limit
+
+	var total int
+	err := h.DB.QueryRow(`
+		SELECT COUNT(*) 
+		FROM users u
+		JOIN accounts a ON a.account_id = u.account_id
+		WHERE a.role = 'elder' AND a.is_active = TRUE
+	`).Scan(&total)
+	if err != nil {
+		http.Error(w, `{"error":"db error counting elders"}`, http.StatusInternalServerError)
+		return
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = (total + limit - 1) / limit
+	}
+
+	rows, err := h.DB.Query(`
+		SELECT u.user_id, u.full_name, u.gender, u.contact_number,
+		       (SELECT MAX(checkin_time) FROM check_ins c WHERE c.user_id = u.user_id) AS last_checkin,
+		       (SELECT COUNT(*) FROM anomalies a WHERE a.user_id = u.user_id AND a.is_resolved = FALSE AND COALESCE(a.review_status, '') <> 'false_positive') AS open_count,
+		       (SELECT a.severity FROM anomalies a WHERE a.user_id = u.user_id AND a.is_resolved = FALSE
+		          ORDER BY CASE a.severity WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC LIMIT 1) AS top_sev,
+		       CASE WHEN $2 = 'caregiver' THEN EXISTS(SELECT 1 FROM user_caregiver uc WHERE uc.user_id = u.user_id AND uc.caregiver_id = $1 AND uc.is_active = TRUE) ELSE FALSE END AS is_assigned
+		FROM users u
+		JOIN accounts a ON a.account_id = u.account_id
+		WHERE a.role = 'elder' AND a.is_active = TRUE
+		ORDER BY u.user_id ASC
+		LIMIT $3 OFFSET $4
+	`, claims.ProfileID, claims.Role, limit, offset)
+	if err != nil {
+		http.Error(w, `{"error":"db error querying elders"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	out := make([]elderCardRow, 0)
+	for rows.Next() {
+		var e elderCardRow
+		if err := rows.Scan(&e.UserID, &e.FullName, &e.Gender, &e.ContactNumber, &e.LastCheckin, &e.OpenAnomalyCount, &e.HighestSeverity, &e.IsAssigned); err == nil {
+			out = append(out, e)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, paginatedEldersResponse{
+		Elders:     out,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	})
+}
+
 // Triage lists every elder assigned to this caregiver, sorted worst-first
 // (severity-sorted triage view per PROJECT_CONTEXT.md goals).
 func (h *Handler) Triage(w http.ResponseWriter, r *http.Request) {

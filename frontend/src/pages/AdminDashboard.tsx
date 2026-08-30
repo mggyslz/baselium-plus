@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
+import { ElderDetail, ElderProfileCardsView } from "./CaregiverDashboard";
 import type { AdminAccount, AdminAuditLog, AdminElder, AdminOverview } from "../types";
 import {
   BarChart3,
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<number | null>(null);
 
   async function load() {
     try {
@@ -146,6 +148,16 @@ export default function AdminDashboard() {
             <ShieldCheck size={18} />
             <span>Audit Log Explorer</span>
           </button>
+
+          <button
+            role="tab"
+            aria-selected={tab === "profiles"}
+            className={`sidebar-item ${tab === "profiles" ? "active" : ""}`}
+            onClick={() => { setTab("profiles"); setSelectedProfile(null); setMobileOpen(false); }}
+          >
+            <HeartPulse size={18} />
+            <span>Elder Profiles</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -169,10 +181,10 @@ export default function AdminDashboard() {
         <header className="workspace-topbar">
           <div className="workspace-title">
             <h1>
-              {tab === "overview" ? "System Overview" : tab === "accounts" ? "Account Management & Assignments" : tab === "elders" ? "Elder Activity & Caregiver Partners" : "Audit Log Explorer"}
+              {selectedProfile ? "Elder Profile" : tab === "overview" ? "System Overview" : tab === "accounts" ? "Account Management & Assignments" : tab === "elders" ? "Elder Activity & Caregiver Partners" : tab === "profiles" ? "Elder Directory & Profiles" : "Audit Log Explorer"}
             </h1>
             <p className="workspace-subtitle">
-              {tab === "overview" ? "System-wide metrics and role breakdown" : tab === "accounts" ? "Manage user accounts and administrative assignments" : tab === "elders" ? "Seven-day check-in activity and caregiver partnerships" : "DPA compliance log auditing and access tracking"}
+              {selectedProfile ? "Read-only trends and alert history for administrative oversight" : tab === "overview" ? "System-wide metrics and role breakdown" : tab === "accounts" ? "Manage user accounts and administrative assignments" : tab === "elders" ? "Seven-day check-in activity and caregiver partnerships" : tab === "profiles" ? "Browse all elder profiles with server-side pagination" : "DPA compliance log auditing and access tracking"}
             </p>
           </div>
           <button className="mobile-nav-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Navigation">
@@ -184,7 +196,9 @@ export default function AdminDashboard() {
           {error && <div className="error-banner"><span>{error}</span><button className="secondary" onClick={load}><RefreshCw size={14} /> Retry</button></div>}
           {message && <div className="success" style={{ marginBottom: 12 }}>{message}</div>}
 
-          {isLoading ? (
+          {selectedProfile ? (
+            <ElderDetail userId={selectedProfile} token={session.token} readOnly onBack={() => setSelectedProfile(null)} />
+          ) : isLoading ? (
             <div className="card"><div className="loading-container"><span className="spinner" /><span>Loading system data…</span></div></div>
           ) : (
             <>
@@ -294,6 +308,14 @@ export default function AdminDashboard() {
                   </div>
                   {filteredElders.length === 0 && <div className="empty-state">No elders match that search query.</div>}
                 </section>
+              )}
+
+              {tab === "profiles" && (
+                <ElderProfileCardsView
+                  token={session.token}
+                  allowAssignment={false}
+                  onSelectElder={setSelectedProfile}
+                />
               )}
 
               {tab === "audit" && (

@@ -194,7 +194,31 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
 .audit-heading { gap: 16px; align-items: flex-start; }.audit-heading h2 { margin-bottom: 4px; }.audit-heading p { margin: 0; }.audit-search { margin-top: 4px; }.audit-result-count { margin: 8px 0; }.audit-action { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155; font-size: 12px; background: #f1f5f9; border-radius: 4px; padding: 3px 5px; }
 .partner-list { display: flex; flex-wrap: wrap; gap: 5px; min-width: 150px; }.partner-tag { background: #e0f2fe; color: #075985; border-radius: 999px; font-size: 12px; padding: 3px 7px; white-space: nowrap; }.admin-alert-count { color: var(--high); font-weight: 600; }
 
-/* Accessible Emoji Rating Selectors & Elder UX */
+/* Collapsible Card Header */
+.collapsible-header {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  border-radius: 6px;
+  transition: opacity 0.15s ease;
+}
+.collapsible-header:hover {
+  background: none;
+  opacity: 0.85;
+}
+.collapsible-header:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+/* Accessible Rating Selectors & Elder UX */
 .rating-section {
   display: flex;
   flex-direction: column;
@@ -210,13 +234,13 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
   font-size: 13px;
   color: var(--muted);
 }
-.emoji-grid {
+.rating-grid, .emoji-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-top: 4px;
 }
-.emoji-btn {
+.rating-btn, .emoji-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -231,32 +255,32 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
   color: var(--text);
   font-weight: 500;
 }
-.emoji-btn:hover {
+.rating-btn:hover, .emoji-btn:hover {
   background: #f1f5f9;
   border-color: #94a3b8;
   transform: translateY(-1px);
 }
-.emoji-btn:focus-visible {
+.rating-btn:focus-visible, .emoji-btn:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
-.emoji-btn.selected {
+.rating-btn.selected, .emoji-btn.selected {
   background: #eff6ff;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
-.emoji-icon {
+.rating-icon, .emoji-icon {
   font-size: 28px;
   line-height: 1;
   margin-bottom: 6px;
 }
-.emoji-text {
+.rating-text, .emoji-text {
   font-size: 11px;
   text-align: center;
   color: #475569;
   line-height: 1.2;
 }
-.emoji-btn.selected .emoji-text {
+.rating-btn.selected .rating-text, .emoji-btn.selected .emoji-text {
   color: var(--primary-dark);
   font-weight: 600;
 }
@@ -290,6 +314,133 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: upp
   0% { opacity: 1; }
   50% { opacity: 0.6; }
   100% { opacity: 1; }
+}
+
+/* Elder Profile Cards & Pagination */
+.elder-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.elder-profile-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.elder-profile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: #cbd5e1;
+}
+.elder-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.elder-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  border: 2px solid #bfdbfe;
+  flex-shrink: 0;
+}
+.elder-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.elder-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.elder-card-id {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.elder-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+.elder-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.elder-card-footer {
+  display: flex;
+  gap: 8px;
+}
+.elder-card-footer button {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+}
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pagination-info {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pagination-btn {
+  background: #f1f5f9;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pagination-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .checkin-success-banner {

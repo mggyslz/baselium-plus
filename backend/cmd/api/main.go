@@ -94,8 +94,8 @@ func main() {
 
 	// caregiver
 	mux.Handle("GET /api/dashboard/triage", auth.Require("caregiver")(http.HandlerFunc(dashH.Triage)))
-	mux.Handle("GET /api/dashboard/trend", auth.Require("caregiver", "elder")(http.HandlerFunc(dashH.Trend)))
-	mux.Handle("GET /api/dashboard/alerts", auth.Require("caregiver", "family")(http.HandlerFunc(dashH.AlertHistory)))
+	mux.Handle("GET /api/dashboard/trend", auth.Require("caregiver", "elder", "admin")(http.HandlerFunc(dashH.Trend)))
+	mux.Handle("GET /api/dashboard/alerts", auth.Require("caregiver", "family", "admin")(http.HandlerFunc(dashH.AlertHistory)))
 	mux.Handle("GET /api/dashboard/report", auth.Require("caregiver")(http.HandlerFunc(dashH.ExportReport)))
 	mux.Handle("POST /api/dashboard/baseline/reset", auth.Require("caregiver")(http.HandlerFunc(dashH.ResetBaseline)))
 	mux.Handle("GET /api/notifications", auth.Require("caregiver")(http.HandlerFunc(notifH.List)))
@@ -106,6 +106,7 @@ func main() {
 	mux.Handle("POST /api/family/grant", auth.Require("caregiver")(http.HandlerFunc(familyH.Grant)))
 	mux.Handle("GET /api/family/members", auth.Require("caregiver")(http.HandlerFunc(familyH.Members)))
 	mux.Handle("POST /api/caregiver/assign", auth.Require("caregiver")(http.HandlerFunc(familyH.Assign)))
+	mux.Handle("GET /api/caregiver/elders", auth.Require("caregiver", "admin")(http.HandlerFunc(dashH.PaginatedElders)))
 	mux.Handle("GET /api/admin/overview", auth.Require("admin")(http.HandlerFunc(adminH.Overview)))
 	mux.Handle("GET /api/admin/accounts", auth.Require("admin")(http.HandlerFunc(adminH.Accounts)))
 	mux.Handle("GET /api/admin/elders", auth.Require("admin")(http.HandlerFunc(adminH.Elders)))

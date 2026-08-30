@@ -25,3 +25,22 @@ export interface AdminOverview { elder?: number; caregiver?: number; family?: nu
 export interface AdminAccount { account_id: number; email: string; Role: string; active: boolean }
 export interface AdminAuditLog { log_id: number; account_id?: number; account_email: string; action: string; target_type?: string; target_id?: number; created_at: string }
 export interface AdminElder { user_id: number; full_name: string; last_checkin?: string; total_checkins: number; checkins_last_7_days: number; avg_mood_last_7_days?: number; avg_activity_last_7_days?: number; open_alert_count: number; caregivers: { caregiver_id: number; full_name: string }[] }
+
+export interface ElderCardItem {
+  user_id: number;
+  full_name: string;
+  gender?: string;
+  contact_number?: string;
+  last_checkin?: string;
+  open_anomaly_count: number;
+  highest_open_severity?: string;
+  is_assigned: boolean;
+}
+
+export interface PaginatedEldersResponse {
+  elders: ElderCardItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
