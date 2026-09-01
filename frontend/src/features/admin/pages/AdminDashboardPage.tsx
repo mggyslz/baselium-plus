@@ -136,7 +136,7 @@ export default function AdminDashboard() {
             onClick={() => { setTab("elders"); setMobileOpen(false); }}
           >
             <HeartPulse size={18} />
-            <span>Elder Activity View</span>
+            <span>Senior Monitoring</span>
           </button>
 
           <button
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
             onClick={() => { setTab("audit"); setMobileOpen(false); }}
           >
             <ShieldCheck size={18} />
-            <span>Audit Log Explorer</span>
+            <span>System History</span>
           </button>
 
           <button
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             onClick={() => { setTab("profiles"); setSelectedProfile(null); setMobileOpen(false); }}
           >
             <HeartPulse size={18} />
-            <span>Elder Profiles</span>
+            <span>Senior Directory</span>
           </button>
         </nav>
 
@@ -181,10 +181,10 @@ export default function AdminDashboard() {
         <header className="workspace-topbar">
           <div className="workspace-title">
             <h1>
-              {selectedProfile ? "Elder Profile" : tab === "overview" ? "System Overview" : tab === "accounts" ? "Account Management & Assignments" : tab === "elders" ? "Elder Activity & Caregiver Partners" : tab === "profiles" ? "Elder Directory & Profiles" : "Audit Log Explorer"}
+              {selectedProfile ? "Senior Profile" : tab === "overview" ? "System Overview" : tab === "accounts" ? "Account Management & Assignments" : tab === "elders" ? "Senior Monitoring & Partners" : tab === "profiles" ? "Senior Directory" : "System History"}
             </h1>
             <p className="workspace-subtitle">
-              {selectedProfile ? "Read-only trends and alert history for administrative oversight" : tab === "overview" ? "System-wide metrics and role breakdown" : tab === "accounts" ? "Manage user accounts and administrative assignments" : tab === "elders" ? "Seven-day check-in activity and caregiver partnerships" : tab === "profiles" ? "Browse all elder profiles with server-side pagination" : "DPA compliance log auditing and access tracking"}
+              {selectedProfile ? "View trends and alert history for administrative oversight" : tab === "overview" ? "System-wide metrics and role breakdown" : tab === "accounts" ? "Manage user accounts and administrative assignments" : tab === "elders" ? "Seven-day check-in activity and caregiver partnerships" : tab === "profiles" ? "Browse all senior profiles" : "System action history and compliance logs"}
             </p>
           </div>
           <button className="mobile-nav-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Navigation">

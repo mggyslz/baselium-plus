@@ -48,6 +48,6 @@ describe("CaregiverDashboard live updates", () => {
       expect(triageSpy).toHaveBeenCalledTimes(2);
       expect(notificationsSpy).toHaveBeenCalledTimes(2);
     });
-    expect(screen.getByText(/Triage & Assigned Elders/i)).toBeInTheDocument();
+    expect(screen.getByText(/My Assigned Seniors/i)).toBeInTheDocument();
   });
 });

@@ -146,7 +146,6 @@ function ActionableAlertCard({
         <Clock size={14} />
         Detected: {new Date(alert.detected_at).toLocaleString()}
         {alert.duration_days && ` · Duration: ${alert.duration_days} day(s)`}
-        {alert.deviation_magnitude && ` · Magnitude: ${alert.deviation_magnitude.toFixed(2)} σ`}
       </div>
 
       {elderNote && (
@@ -229,7 +228,7 @@ export function ElderDetail({ userId, onBack, token, readOnly = false }: { userI
   }
 
   async function resetBaseline() {
-    if (!window.confirm("Reset this elder's baseline? New check-ins will begin a fresh seven-day cold-start period.")) return;
+    if (!window.confirm("Recalibrate alerts for this senior? New check-ins will establish a fresh normal pattern over the next 7 days.")) return;
     try { await api.resetBaseline(token, userId); load(); } catch (err: any) { setError(err.message); }
   }
 
@@ -257,7 +256,7 @@ export function ElderDetail({ userId, onBack, token, readOnly = false }: { userI
         <button className="link-btn" onClick={onBack}>&larr; Back to triage</button>
         <div>
           {!readOnly && <><button className="secondary" onClick={downloadReport}>Download Excel report</button>{" "}
-          <button className="secondary" onClick={resetBaseline}>Reset baseline</button></>}
+          <button className="secondary" onClick={resetBaseline}>Recalibrate alerts</button></>}
         </div>
       </div>
       {error && (
@@ -284,7 +283,7 @@ export function ElderDetail({ userId, onBack, token, readOnly = false }: { userI
                   <Tooltip />
                   <Legend />
                   {trend.baseline_mood > 0 && (
-                    <ReferenceLine y={trend.baseline_mood} stroke="#93c5fd" strokeDasharray="4 4" label={{ value: "mood baseline", fontSize: 10, fill: "#93c5fd" }} />
+                    <ReferenceLine y={trend.baseline_mood} stroke="#93c5fd" strokeDasharray="4 4" label={{ value: "typical mood", fontSize: 10, fill: "#93c5fd" }} />
                   )}
                   <Line type="monotone" dataKey="mood" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="activity" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
@@ -746,7 +745,7 @@ export default function CaregiverDashboard() {
             onClick={() => { setTab("triage"); setSelectedUser(null); setMobileOpen(false); }}
           >
             <UserCheck size={18} />
-            <span>Triage & Elders</span>
+            <span>Assigned Seniors</span>
           </button>
 
           <button
@@ -792,10 +791,10 @@ export default function CaregiverDashboard() {
         <header className="workspace-topbar">
           <div className="workspace-title">
             <h1>
-              {selectedUser ? "Elder Detail & Metrics" : tab === "triage" ? "Triage & Assigned Elders" : tab === "notifications" ? "Notifications & Alerts" : "Access Management"}
+              {selectedUser ? "Senior Detail & Metrics" : tab === "triage" ? "My Assigned Seniors" : tab === "notifications" ? "Notifications & Alerts" : "Access Management"}
             </h1>
             <p className="workspace-subtitle">
-              {selectedUser ? "Review trend charts, alert history, and health notes" : tab === "triage" ? "Elders sorted worst-first by active severity" : tab === "notifications" ? "Live DB and WebSocket alert history" : "Assign elders and grant family member access"}
+              {selectedUser ? "Review trend charts, alert history, and health notes" : tab === "triage" ? "Seniors sorted by active alerts" : tab === "notifications" ? "Recent alerts and updates" : "Assign seniors and grant family member access"}
             </p>
           </div>
           <button className="mobile-nav-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Navigation">
@@ -824,16 +823,16 @@ export default function CaregiverDashboard() {
                   />
 
                   <div className="card" style={{ marginTop: 20 }}>
-                    <h2>Your assigned elders, worst-first</h2>
+                    <h2>Your assigned seniors, highest priority first</h2>
                     {isLoadingTriage ? (
-                      <LoadingSpinner label="Loading assigned elders..." />
+                      <LoadingSpinner label="Loading assigned seniors..." />
                     ) : triage.length === 0 ? (
-                      <div className="empty-state">No elders assigned to you yet. Select "Assign to Me" on a profile card above or use the Access tab.</div>
+                      <div className="empty-state">No seniors assigned to you yet. Select "Assign to Me" on a profile card above or use the Access tab.</div>
                     ) : (
                       <div className="table-scroll">
                         <table>
                           <thead>
-                            <tr><th>Elder</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
+                            <tr><th>Senior</th><th>Last check-in</th><th>Open alerts</th><th>Highest severity</th><th></th></tr>
                           </thead>
                           <tbody>
                             {triage.map((t) => (
