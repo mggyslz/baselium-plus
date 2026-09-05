@@ -47,8 +47,8 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "email, password, and full_name are required")
 		return
 	}
-	if req.Role != "elder" && req.Role != "caregiver" && req.Role != "family" {
-		writeErr(w, http.StatusBadRequest, "role must be elder, caregiver, or family; admin accounts are provisioned separately")
+	if req.Role != "elder" && req.Role != "caregiver" {
+		writeErr(w, http.StatusBadRequest, "role must be elder or caregiver; family and admin accounts are provisioned separately")
 		return
 	}
 
@@ -86,16 +86,6 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		err = tx.QueryRow(
 			`INSERT INTO caregivers (account_id, full_name, relationship) VALUES ($1, $2, $3) RETURNING caregiver_id`,
 			accountID, req.FullName, req.Relationship,
-		).Scan(&profileID)
-	case "family":
-		if req.ElderUserID == nil {
-			writeErr(w, http.StatusBadRequest, "family signup requires elder_user_id")
-			return
-		}
-		err = tx.QueryRow(
-			`INSERT INTO family_access (account_id, user_id, full_name, relationship, granted_by)
-			 VALUES ($1, $2, $3, $4, $5) RETURNING family_id`,
-			accountID, *req.ElderUserID, req.FullName, req.Relationship, req.GrantedByID,
 		).Scan(&profileID)
 	}
 	if err != nil {

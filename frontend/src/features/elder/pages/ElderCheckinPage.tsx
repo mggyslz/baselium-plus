@@ -50,6 +50,48 @@ export default function ElderCheckin() {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [pendingQueueLength, setPendingQueueLength] = useState(0);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      syncPendingCheckins();
+    };
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    const queued = JSON.parse(localStorage.getItem("pending_checkins") || "[]");
+    setPendingQueueLength(queued.length);
+    if (navigator.onLine && queued.length > 0) {
+      syncPendingCheckins();
+    }
+    
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [session.token]);
+
+  async function syncPendingCheckins() {
+    const queued = JSON.parse(localStorage.getItem("pending_checkins") || "[]");
+    if (queued.length === 0) return;
+    
+    let remaining = [...queued];
+    for (const q of queued) {
+      try {
+        await api.submitCheckin(session.token, q.payload);
+        remaining = remaining.filter((r) => r.id !== q.id);
+        localStorage.setItem("pending_checkins", JSON.stringify(remaining));
+        setPendingQueueLength(remaining.length);
+      } catch (e) {
+        break; // Stop on first network error
+      }
+    }
+    loadHistory();
+  }
+
   useEffect(() => {
     const SpeechRecognition = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -97,12 +139,32 @@ export default function ElderCheckin() {
     setError("");
     setResult(null);
     setSubmitting(true);
+    
+    const payload = {
+      mood: Number(mood),
+      activity_level: Number(activity),
+      notes: note,
+    };
+    
+    if (isOffline || !navigator.onLine) {
+      const queued = JSON.parse(localStorage.getItem("pending_checkins") || "[]");
+      queued.push({ id: Date.now(), payload });
+      localStorage.setItem("pending_checkins", JSON.stringify(queued));
+      setPendingQueueLength(queued.length);
+      setNote("");
+      setSubmitting(false);
+      // Hack to reuse the same result UI for queued check-ins
+      setResult({
+        checkin_id: 0,
+        checkin_time: new Date().toISOString(),
+        anomalies_raised: [],
+        queued: true
+      } as any);
+      return;
+    }
+    
     try {
-      const data = await api.submitCheckin(session.token, {
-        mood: Number(mood),
-        activity_level: Number(activity),
-        notes: note,
-      });
+      const data = await api.submitCheckin(session.token, payload);
       setResult(data);
       setNote("");
       loadHistory();
@@ -229,11 +291,16 @@ export default function ElderCheckin() {
         </form>
 
         {result && (
-          <div className="checkin-success-banner" role="alert">
-            <div className="checkin-success-title">
-              <CheckCircle2 size={20} color="#166534" /> Check-in saved successfully!
+          <div className={`checkin-success-banner ${(result as any).queued ? 'queued' : ''}`} role="alert" style={{ backgroundColor: (result as any).queued ? '#fef3c7' : undefined, color: (result as any).queued ? '#92400e' : undefined, borderColor: (result as any).queued ? '#f59e0b' : undefined }}>
+            <div className="checkin-success-title" style={{ color: (result as any).queued ? '#92400e' : undefined }}>
+              <CheckCircle2 size={20} color={(result as any).queued ? '#d97706' : '#166534'} /> 
+              {(result as any).queued ? "Check-in queued (offline)!" : "Check-in saved successfully!"}
             </div>
-            {result.anomalies_raised && result.anomalies_raised.length > 0 ? (
+            {(result as any).queued ? (
+              <div style={{ marginTop: 4, fontSize: 14 }}>
+                Your check-in has been saved locally and will synchronize automatically when you reconnect to the internet.
+              </div>
+            ) : result.anomalies_raised && result.anomalies_raised.length > 0 ? (
               <div style={{ marginTop: 6, fontSize: 14 }}>
                 Your caregiver{result.anomalies_raised.length > 1 ? "s were" : " was"} notified about {result.anomalies_raised.length} change{result.anomalies_raised.length > 1 ? "s" : ""} in your pattern.
               </div>
@@ -245,6 +312,18 @@ export default function ElderCheckin() {
           </div>
         )}
       </div>
+
+      {pendingQueueLength > 0 && (
+        <div className="card" style={{ backgroundColor: "#fffbeb", borderColor: "#fef3c7" }}>
+          <h2 style={{ fontSize: 16, margin: 0, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+            <ActivityIcon size={18} />
+            {pendingQueueLength} pending check-in{pendingQueueLength > 1 ? "s" : ""}
+          </h2>
+          <p style={{ margin: "4px 0 0", fontSize: 14, color: "#b45309" }}>
+            Waiting for internet connection to synchronize.
+          </p>
+        </div>
+      )}
 
       {/* History */}
       <div className="card">

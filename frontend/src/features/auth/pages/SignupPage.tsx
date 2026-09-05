@@ -6,13 +6,13 @@ import type { ApiPayload } from "../../../shared/types/models";
 import { HeartPulse, Mail, Lock, User, Eye, EyeOff, AlertCircle, HeartHandshake, Stethoscope, Users } from "lucide-react";
 
 export default function Signup() {
-  const [role, setRole] = useState<"elder" | "caregiver" | "family">("elder");
+  const [role, setRole] = useState<"elder" | "caregiver">("elder");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [relationship, setRelationship] = useState("");
-  const [elderUserId, setElderUserId] = useState("");
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -25,10 +25,6 @@ export default function Signup() {
     try {
       const payload: ApiPayload = { email, password, role, full_name: fullName };
       if (role === "caregiver") payload.relationship = relationship;
-      if (role === "family") {
-        payload.relationship = relationship;
-        payload.elder_user_id = Number(elderUserId);
-      }
       const data = await api.signup(payload);
       login(data);
       navigate("/");
@@ -84,20 +80,6 @@ export default function Signup() {
                 </div>
                 <div className="role-card-title">Caregiver</div>
                 <div className="role-card-desc">Triage alerts</div>
-              </button>
-
-              <button
-                type="button"
-                role="radio"
-                aria-checked={role === "family"}
-                className={`role-card ${role === "family" ? "selected" : ""}`}
-                onClick={() => setRole("family")}
-              >
-                <div className="role-card-icon">
-                  <Users size={22} />
-                </div>
-                <div className="role-card-title">Family</div>
-                <div className="role-card-desc">Status updates</div>
               </button>
             </div>
           </div>
@@ -168,8 +150,8 @@ export default function Signup() {
             </div>
           </div>
 
-          {/* Conditional Caregiver / Family Relationship */}
-          {(role === "caregiver" || role === "family") && (
+          {/* Conditional Caregiver Relationship */}
+          {role === "caregiver" && (
             <div>
               <label htmlFor="signup-rel">Relationship to Elder</label>
               <input
@@ -177,22 +159,6 @@ export default function Signup() {
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
                 placeholder="e.g. daughter, primary nurse"
-              />
-            </div>
-          )}
-
-          {/* Conditional Family Elder User ID */}
-          {role === "family" && (
-            <div>
-              <label htmlFor="signup-elder-id">Elder's User ID</label>
-              <input
-                id="signup-elder-id"
-                type="number"
-                min="1"
-                value={elderUserId}
-                onChange={(e) => setElderUserId(e.target.value)}
-                placeholder="Ask caregiver or elder for their user ID"
-                required
               />
             </div>
           )}

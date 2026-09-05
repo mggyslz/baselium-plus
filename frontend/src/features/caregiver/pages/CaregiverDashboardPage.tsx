@@ -490,24 +490,30 @@ export function AccessManagement({ token }: { token: string }) {
   const [assignForm, setAssignForm] = useState({ elder_user_id: "" });
   const [grantForm, setGrantForm] = useState({ elder_user_id: "", full_name: "", relationship: "", email: "", password: "" });
   const [members, setMembers] = useState<any[]>([]);
+  const [eldersList, setEldersList] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [granting, setGranting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  async function loadMembers() {
+  async function loadData() {
     try {
       setIsLoading(true);
-      setMembers((await api.familyMembers(token)) || []);
+      const [membersData, eldersData] = await Promise.all([
+        api.familyMembers(token),
+        api.paginatedElders(token, 1, 100)
+      ]);
+      setMembers(membersData || []);
+      setEldersList(eldersData?.elders || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load family access list.");
+      setError(err.message || "Failed to load data.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  useEffect(() => { loadMembers(); }, [token]);
+  useEffect(() => { loadData(); }, [token]);
 
   async function assign(e: React.FormEvent) {
     e.preventDefault();
@@ -536,7 +542,7 @@ export function AccessManagement({ token }: { token: string }) {
       });
       setSuccess("Family access granted.");
       setGrantForm({ elder_user_id: "", full_name: "", relationship: "", email: "", password: "" });
-      loadMembers();
+      loadData();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -549,7 +555,7 @@ export function AccessManagement({ token }: { token: string }) {
     try {
       await api.revokeFamily(token, familyId);
       setSuccess("Access revoked.");
-      loadMembers();
+      loadData();
     } catch (err: any) {
       setError(err.message);
     }
@@ -563,15 +569,16 @@ export function AccessManagement({ token }: { token: string }) {
           <form className="stack" onSubmit={assign}>
             <div>
               <label htmlFor="assign-elder-id">Elder user ID</label>
-              <input
+              <select
                 id="assign-elder-id"
-                type="number"
-                min="1"
                 required
                 aria-label="Elder user ID to assign"
                 value={assignForm.elder_user_id}
                 onChange={(e) => setAssignForm({ ...assignForm, elder_user_id: e.target.value })}
-              />
+              >
+                <option value="" disabled>Select an elder</option>
+                {eldersList.map(e => <option key={e.user_id} value={e.user_id}>{e.full_name} (ID: {e.user_id})</option>)}
+              </select>
             </div>
             <button disabled={assigning}>{assigning ? "Assigning…" : "Assign elder"}</button>
           </form>
@@ -582,15 +589,16 @@ export function AccessManagement({ token }: { token: string }) {
           <form className="stack" onSubmit={grant}>
             <div>
               <label htmlFor="grant-elder-id">Elder user ID</label>
-              <input
+              <select
                 id="grant-elder-id"
-                type="number"
-                min="1"
                 required
                 aria-label="Elder user ID for grant access"
                 value={grantForm.elder_user_id}
                 onChange={(e) => setGrantForm({ ...grantForm, elder_user_id: e.target.value })}
-              />
+              >
+                <option value="" disabled>Select an elder</option>
+                {eldersList.map(e => <option key={e.user_id} value={e.user_id}>{e.full_name} (ID: {e.user_id})</option>)}
+              </select>
             </div>
             <div>
               <label htmlFor="grant-name">Family member's full name</label>

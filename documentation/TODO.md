@@ -116,9 +116,9 @@ accessible experience before adding broad new backend modules:
       to caregivers instead of manual download
 
 ### Frontend follow-up (priority order)
-- [ ] Make Family Viewer access invitation-only: remove or restrict public family signup so
+- [x] Make Family Viewer access invitation-only: remove or restrict public family signup so
       a caregiver grant is the sole supported access path, preserving the D6 privacy boundary.
-- [ ] Add offline-ready elder check-ins: queue a completed check-in locally when offline,
+- [x] Add offline-ready elder check-ins: queue a completed check-in locally when offline,
       show its pending state clearly, and synchronize it automatically after reconnecting.
 - [x] Expand frontend tests for elder check-in submission and errors, Family Viewer's restricted
       view, caregiver triage/acknowledgement/report download, and WebSocket-driven updates.

@@ -102,4 +102,35 @@ describe("ElderCheckin", () => {
 
     expect(await screen.findByText("Network error submitting check-in")).toBeInTheDocument();
   });
+
+  it("queues check-in when offline and shows pending state", async () => {
+    // Mock navigator.onLine to be false
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+    
+    render(<ElderCheckin />);
+
+    const submitBtn = screen.getByRole("button", { name: "Submit Check-in" });
+    await userEvent.click(submitBtn);
+
+    // Should not have called API
+    expect(submitCheckinSpy).not.toHaveBeenCalled();
+
+    // Should show queued message
+    expect(await screen.findByText(/Check-in queued \(offline\)!/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 pending check-in/i)).toBeInTheDocument();
+
+    // Verify localStorage has the queued item
+    const queued = JSON.parse(localStorage.getItem("pending_checkins") || "[]");
+    expect(queued).toHaveLength(1);
+    expect(queued[0].payload).toMatchObject({
+      mood: 3,
+      activity_level: 3,
+      notes: ""
+    });
+
+    // Cleanup
+    localStorage.clear();
+    Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true });
+  });
 });

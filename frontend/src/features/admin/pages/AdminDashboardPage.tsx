@@ -228,12 +228,18 @@ export default function AdminDashboard() {
                     <h2>Assign caregiver to elder</h2>
                     <form className="stack" onSubmit={assign}>
                       <div>
-                        <label htmlFor="admin-elder-id">Elder user ID</label>
-                        <input id="admin-elder-id" type="number" min="1" required value={form.elder_user_id} onChange={(e) => setForm({ ...form, elder_user_id: Number(e.target.value) })} />
+                        <label htmlFor="admin-elder-id">Elder</label>
+                        <select id="admin-elder-id" required value={form.elder_user_id} onChange={(e) => setForm({ ...form, elder_user_id: Number(e.target.value) })}>
+                          <option value="" disabled>Select an elder</option>
+                          {elders.map(e => <option key={e.user_id} value={e.user_id}>{e.full_name} (ID: {e.user_id})</option>)}
+                        </select>
                       </div>
                       <div>
-                        <label htmlFor="admin-caregiver-id">Caregiver ID</label>
-                        <input id="admin-caregiver-id" type="number" min="1" required value={form.caregiver_id} onChange={(e) => setForm({ ...form, caregiver_id: Number(e.target.value) })} />
+                        <label htmlFor="admin-caregiver-id">Caregiver</label>
+                        <select id="admin-caregiver-id" required value={form.caregiver_id} onChange={(e) => setForm({ ...form, caregiver_id: Number(e.target.value) })}>
+                          <option value="" disabled>Select a caregiver</option>
+                          {accounts.filter(a => a.Role === "caregiver" || (a as any).role === "caregiver").map(a => <option key={a.account_id} value={a.account_id}>{a.email} (ID: {a.account_id})</option>)}
+                        </select>
                       </div>
                       <button type="submit">Save assignment</button>
                     </form>

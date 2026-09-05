@@ -114,15 +114,17 @@ describe("AccessManagement", () => {
 
   it("assigns an elder and reports success", async () => {
     render(<AccessManagement token={TOKEN} />);
-    await userEvent.type(screen.getByLabelText("Elder user ID to assign"), "9");
+    await waitFor(() => screen.getByRole("combobox", { name: "Elder user ID to assign" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Elder user ID to assign" }), "1");
     await userEvent.click(screen.getByRole("button", { name: "Assign elder" }));
-    expect(assignSpy).toHaveBeenCalledWith(TOKEN, 9);
+    expect(assignSpy).toHaveBeenCalledWith(TOKEN, 1);
     expect(await screen.findByText("Elder assigned successfully.")).toBeInTheDocument();
   });
 
   it("grants family access with the collected payload", async () => {
     render(<AccessManagement token={TOKEN} />);
-    await userEvent.type(screen.getByLabelText("Elder user ID for grant access"), "2");
+    await waitFor(() => screen.getByRole("combobox", { name: "Elder user ID for grant access" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Elder user ID for grant access" }), "2");
     await userEvent.type(screen.getByLabelText("Family member's full name"), "Sam Li");
     await userEvent.type(screen.getByLabelText("Relationship to elder"), "son");
     await userEvent.type(screen.getByLabelText("Email (login)"), "sam@test.com");
