@@ -180,3 +180,72 @@ func (h *Handler) Assign(w http.ResponseWriter, r *http.Request) {
 	h.DB.Exec(`INSERT INTO audit_logs(account_id,action,target_type,target_id) VALUES($1,'admin_assign_caregiver','user',$2)`, claims.AccountID, req.ElderUserID)
 	w.WriteHeader(204)
 }
+
+// ToggleActive flips an account's active status between active and inactive.
+func (h *Handler) ToggleActive(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID int `json:"account_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.AccountID < 1 {
+		http.Error(w, `{"error":"valid account_id required"}`, http.StatusBadRequest)
+		return
+	}
+	claims := auth.FromContext(r.Context())
+	if req.AccountID == claims.AccountID {
+		http.Error(w, `{"error":"cannot deactivate your own admin account"}`, http.StatusBadRequest)
+		return
+	}
+	var newStatus bool
+	err := h.DB.QueryRow(`
+		UPDATE accounts 
+		SET is_active = NOT is_active 
+		WHERE account_id = $1 
+		RETURNING is_active
+	`, req.AccountID).Scan(&newStatus)
+	if err != nil {
+		http.Error(w, `{"error":"account not found or db error"}`, http.StatusInternalServerError)
+		return
+	}
+	action := "deactivate_account"
+	if newStatus {
+		action = "activate_account"
+	}
+	h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, $2, 'account', $3)`,
+		claims.AccountID, action, req.AccountID)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"account_id": req.AccountID,
+		"is_active":  newStatus,
+	})
+}
+
+// ResetPassword allows an administrator to reset an account's password.
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID   int    `json:"account_id"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.AccountID < 1 || len(req.NewPassword) < 8 {
+		http.Error(w, `{"error":"valid account_id and password (min 8 chars) required"}`, http.StatusBadRequest)
+		return
+	}
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		http.Error(w, `{"error":"could not secure password"}`, http.StatusInternalServerError)
+		return
+	}
+	res, err := h.DB.Exec(`UPDATE accounts SET password_hash = $1 WHERE account_id = $2`, hash, req.AccountID)
+	if err != nil {
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		http.Error(w, `{"error":"account not found"}`, http.StatusNotFound)
+		return
+	}
+	claims := auth.FromContext(r.Context())
+	h.DB.Exec(`INSERT INTO audit_logs (account_id, action, target_type, target_id) VALUES ($1, 'admin_reset_password', 'account', $2)`,
+		claims.AccountID, req.AccountID)
+
+	w.WriteHeader(http.StatusNoContent)
+}

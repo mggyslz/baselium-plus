@@ -40,6 +40,18 @@ export const api = {
   createHealthNote: (token: string, userId: number, note: string) => request<{ note_id: number }>("/api/health-notes", { method: "POST", body: { user_id: userId, note }, token }),
   adminAuditLogs: (token: string) => request<AdminAuditLog[]>("/api/admin/audit-logs", { token }),
   adminElders: (token: string) => request<AdminElder[]>("/api/admin/elders", { token }),
+  adminToggleActive: (token: string, accountId: number) =>
+    request<{ account_id: number; is_active: boolean }>("/api/admin/account/toggle-active", {
+      method: "POST",
+      body: { account_id: accountId },
+      token,
+    }),
+  adminResetPassword: (token: string, accountId: number, newPassword: string) =>
+    request<null>("/api/admin/account/reset-password", {
+      method: "POST",
+      body: { account_id: accountId, new_password: newPassword },
+      token,
+    }),
   paginatedElders: (token: string, page = 1, limit = 6) => request<PaginatedEldersResponse>("/api/caregiver/elders", { token, params: { page, limit } }),
   downloadReport: async (token: string, userId: number) => {
     const res = await fetch(`${BASE_URL}/api/dashboard/report?user_id=${userId}`, { headers: { Authorization: "Bearer " + token } });

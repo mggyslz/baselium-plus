@@ -112,6 +112,8 @@ func main() {
 	mux.Handle("GET /api/admin/elders", auth.Require("admin")(http.HandlerFunc(adminH.Elders)))
 	mux.Handle("GET /api/admin/audit-logs", auth.Require("admin")(http.HandlerFunc(adminH.AuditLogs)))
 	mux.Handle("POST /api/admin/assign", auth.Require("admin")(http.HandlerFunc(adminH.Assign)))
+	mux.Handle("POST /api/admin/account/toggle-active", auth.Require("admin")(http.HandlerFunc(adminH.ToggleActive)))
+	mux.Handle("POST /api/admin/account/reset-password", auth.Require("admin")(http.HandlerFunc(adminH.ResetPassword)))
 
 	// family
 	mux.Handle("GET /api/family/status", auth.Require("family")(http.HandlerFunc(familyH.Status)))
