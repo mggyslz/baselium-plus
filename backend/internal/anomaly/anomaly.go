@@ -16,10 +16,9 @@ import (
 // Thresholds are intentionally simple constants (not tunable via ML) so
 // they stay explainable — see PROJECT_CONTEXT.md "No ML models."
 const (
-	deviationThresholdStddevs = 1.5 // magnitude beyond which a check-in counts as deviating
-	sustainedDays             = 3   // consecutive deviating days needed for "medium"+ severity
-	highDeviationStddevs      = 2.5
-	highSustainedDays         = 4
+	deviationThresholdStddevs = baseline.DeviationThreshold
+	sustainedDays             = 3
+	escalationDays            = 5
 	frequencyDropThreshold    = 0.5 // checkin_frequency below this vs. prior baseline = flagged
 	missedCheckinHighHours    = 24  // D5: any missed check-in >24h is auto-high
 )
@@ -63,15 +62,13 @@ func DetectForCheckin(db *sql.DB, userID, checkinID int) ([]Anomaly, error) {
 	var found []Anomaly
 
 	if bl.IsColdStart {
-		// D4: cold-start uses conservative rules — only extreme values and
-		// missed check-ins, no computed baseline comparison.
-		if mood == 1 || activity == 1 {
-			found = append(found, Anomaly{
-				UserID: userID, BaselineID: bl.BaselineID, CheckinID: &checkinID,
-				AnomalyType: "mood_deviation", Severity: "low",
-				DeviationMetric: "cold_start_extreme_value", DurationDays: 1,
-				Reason: "Elder has less than 7 days of history (cold-start); an extreme low score (1/5) was flagged as a conservative precaution.",
-			})
+		// D4/D18: cold-start uses a conservative 2.5-z threshold and does not
+		// apply the normal three-consecutive-day rule.
+		if a := checkColdStartDeviation(userID, bl.BaselineID, checkinID, "mood_deviation", "mood", float64(mood), bl.AvgMood, bl.StddevMood); a != nil {
+			found = append(found, *a)
+		}
+		if a := checkColdStartDeviation(userID, bl.BaselineID, checkinID, "activity_deviation", "activity_level", float64(activity), bl.AvgActivity, bl.StddevActivity); a != nil {
+			found = append(found, *a)
 		}
 	} else {
 		if a := checkDeviation(userID, bl.BaselineID, checkinID, "mood_deviation", "mood",
@@ -101,11 +98,8 @@ func DetectForCheckin(db *sql.DB, userID, checkinID int) ([]Anomaly, error) {
 }
 
 func checkDeviation(userID, baselineID, checkinID int, anomalyType, metric string, value, mean, stddev float64, duration int) *Anomaly {
-	if stddev == 0 {
-		return nil // not enough variance to judge deviation yet
-	}
-	magnitude := math.Abs(value-mean) / stddev
-	if magnitude < deviationThresholdStddevs {
+	magnitude := math.Abs(value-mean) / math.Max(stddev, baseline.StddevFloor)
+	if magnitude < deviationThresholdStddevs || duration < sustainedDays {
 		return nil
 	}
 	severity := classifySeverity(magnitude, duration)
@@ -118,16 +112,37 @@ func checkDeviation(userID, baselineID, checkinID int, anomalyType, metric strin
 	}
 }
 
-// classifySeverity implements D5: high requires large + sustained deviation.
-func classifySeverity(magnitude float64, durationDays int) string {
-	switch {
-	case magnitude >= highDeviationStddevs && durationDays >= highSustainedDays:
-		return "high"
-	case magnitude >= deviationThresholdStddevs && durationDays >= sustainedDays:
-		return "medium"
-	default:
-		return "low"
+func checkColdStartDeviation(userID, baselineID, checkinID int, anomalyType, metric string, value, mean, stddev float64) *Anomaly {
+	magnitude := math.Abs(value-mean) / math.Max(stddev, baseline.StddevFloor)
+	if magnitude < 2.5 {
+		return nil
 	}
+	return &Anomaly{
+		UserID: userID, BaselineID: baselineID, CheckinID: &checkinID,
+		AnomalyType: anomalyType, Severity: classifySeverity(magnitude, 1),
+		DeviationMetric: metric, DeviationMagnitude: round2(magnitude), DurationDays: 1,
+		Reason: fmt.Sprintf("Cold-start precaution: %s deviated %.1f std devs from the current baseline (mean %.1f).", metric, magnitude, mean),
+	}
+}
+
+// classifySeverity implements D18's magnitude bands and five-day escalation.
+func classifySeverity(magnitude float64, durationDays int) string {
+	severity := "low"
+	if magnitude >= 3 {
+		severity = "high"
+	} else if magnitude >= 2 {
+		severity = "medium"
+	}
+	if durationDays < escalationDays {
+		return severity
+	}
+	if severity == "low" {
+		return "medium"
+	}
+	if severity == "medium" {
+		return "high"
+	}
+	return severity
 }
 
 func severityForFrequency(freq float64) string {
@@ -151,9 +166,6 @@ func consecutiveDeviatingDays(db *sql.DB, userID int, metric string, bl *baselin
 		col = "activity_level"
 		mean, stddev = bl.AvgActivity, bl.StddevActivity
 	}
-	if stddev == 0 {
-		return 1
-	}
 	rows, err := db.Query(fmt.Sprintf(
 		`SELECT %s, checkin_time FROM check_ins WHERE user_id = $1 ORDER BY checkin_time DESC LIMIT $2`, col),
 		userID, baseline.WindowDays)
@@ -169,7 +181,7 @@ func consecutiveDeviatingDays(db *sql.DB, userID int, metric string, bl *baselin
 		if err := rows.Scan(&v, &t); err != nil {
 			break
 		}
-		if math.Abs(float64(v)-mean)/stddev >= deviationThresholdStddevs {
+		if math.Abs(float64(v)-mean)/math.Max(stddev, baseline.StddevFloor) >= deviationThresholdStddevs {
 			streak++
 		} else {
 			break

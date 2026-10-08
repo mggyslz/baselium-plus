@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-const WindowDays = 7 // D3
+const (
+	WindowDays         = 7
+	StddevFloor        = 0.5
+	DeviationThreshold = 1.5
+)
 
 type Baseline struct {
 	BaselineID       int
@@ -75,8 +79,8 @@ func Compute(db *sql.DB, userID int) (*Baseline, error) {
 	}
 
 	if len(samples) > 0 {
-		b.AvgMood, b.StddevMood = meanStddev(pluck(samples, func(s checkinSample) float64 { return s.Mood }))
-		b.AvgActivity, b.StddevActivity = meanStddev(pluck(samples, func(s checkinSample) float64 { return s.Activity }))
+		b.AvgMood, b.StddevMood = filteredMeanStddev(pluck(samples, func(s checkinSample) float64 { return s.Mood }))
+		b.AvgActivity, b.StddevActivity = filteredMeanStddev(pluck(samples, func(s checkinSample) float64 { return s.Activity }))
 	}
 
 	// D12: checkin_frequency = fraction of expected check-ins actually
@@ -148,6 +152,26 @@ func meanStddev(values []float64) (mean, stddev float64) {
 	}
 	stddev = math.Sqrt(sq / (n - 1)) // sample stddev
 	return mean, stddev
+}
+
+// filteredMeanStddev removes samples that are already anomalous before the
+// next baseline is saved, so an outlier cannot pull itself into the baseline.
+func filteredMeanStddev(values []float64) (mean, stddev float64) {
+	mean, stddev = meanStddev(values)
+	if len(values) < 3 {
+		return mean, stddev
+	}
+	scale := math.Max(stddev, StddevFloor)
+	filtered := make([]float64, 0, len(values))
+	for _, value := range values {
+		if math.Abs(value-mean)/scale < DeviationThreshold {
+			filtered = append(filtered, value)
+		}
+	}
+	if len(filtered) < 2 || len(filtered) == len(values) {
+		return mean, stddev
+	}
+	return meanStddev(filtered)
 }
 
 func pluck(samples []checkinSample, f func(checkinSample) float64) []float64 {

@@ -14,7 +14,7 @@ Baselium+ is a full-stack behavioral monitoring system for the elderly. It runs 
 | Frontend | React + Vite | `npm run dev` | `http://localhost:5173` |
 | Database | PostgreSQL 16 | Windows service `postgresql-x64-16` | `localhost:5432` / db `baselium` |
 
-Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with its own routed page.
+Four roles exist: **Elder**, **Caregiver**, **Family Viewer**, and **Admin**, each with its own routed page.
 
 ---
 
@@ -27,8 +27,9 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
   from `frontend/`. See [`TESTING.md`](./TESTING.md).
 
 ### Authentication & Accounts ✅
-- Signup / login with role selection (`elder`, `caregiver`, `family`).
-- JWT-based auth (HMAC-SHA256, role embedded in claims), ~24h expiry.
+- Signup / login. Family accounts are invitation-only (created via a caregiver grant); the admin account is seeded with `scripts/seed_admin`.
+- JWT-based auth (HMAC-SHA256, role embedded in claims): 15-minute access tokens plus opaque refresh tokens (stored hashed, rotated and revoked on refresh).
+- Login throttling: five failed attempts in 15 minutes per email or source address.
 - Role-guarded middleware (`auth.Require(...)`) on protected endpoints.
 - Password hashing with salted SHA-256 + 100k iterations
   (`backend/internal/auth/password.go`).
@@ -61,6 +62,11 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
   only high-severity alerts.
 - `GET /api/family/status`.
 
+### Admin ✅
+- System overview: account counts, open alerts, assignment totals, account list.
+- Caregiver–elder assignment.
+- Read-only audit-log viewer (viewing is itself logged, D15) and elder statistics (7-day check-in stats, open alerts, active caregiver partnerships).
+
 ### Behavioral Intelligence (partial — backend present)
 - `internal/baseline` computes rolling baseline (mean / stddev /
   check-in frequency) over a 7-day window, with cold-start handling for
@@ -68,25 +74,30 @@ Three roles exist: **Elder**, **Caregiver**, and **Family Viewer**, each with it
 - `internal/anomaly` implements deviation detection + severity classification.
 - `cmd/worker/main.go` recomputes baselines for all elders on a 24-hour
   schedule. Use `--once` for a manual/cron run or `--interval 1h` for local testing.
+- Mood/activity detection follows D18's σ_min, baseline exclusion, 3-day rule, and severity bands. Frequency-deviation scoring still needs a historical frequency standard deviation — see `TODO.md` "Paper alignment".
 
 
 ### Database Schema ✅
-All 9 tables from `backend/migrations/0001_init.sql` applied:
-`accounts`, `users`, `caregivers`, `family_access`, `user_caregiver`,
+15 tables defined in `schema.dbml` (migrations under `backend/migrations/`):
+`accounts`, `admins`, `users`, `caregivers`, `family_access`, `user_caregiver`,
 `check_ins`, `behavioral_baselines`, `anomalies`, `notifications`,
+`notification_delivery_attempts`, `refresh_tokens`, `login_failures`,
 `health_notes`, `audit_logs`.
+The proposal's ERD shows 12 of these; see the README note for the three extras and the three proposal columns not yet present.
 
 ---
 
 ## Known gaps / not yet done
 - Live in-app caregiver alerts are delivered through an authenticated WebSocket, with durable DB-backed retry
   while an active dashboard is connected. FCM/background push is intentionally not included (D13).
-- Mobile React Native check-in app (from the proposal) not present in this repo.
+- Mobile React Native check-in app (from the proposal) not present in this repo; the elder client is the responsive
+  web check-in screen (`frontend/src/pages/ElderCheckin.jsx`). Only a basic offline queue exists; the proposal's
+  sync rules (one check-in/day, last-write-wins, clock check, 11:59 PM lock) are not implemented (D20).
+- Smartwatch conceptual prototype (proposal) not started.
+- Proposal evaluation (30 synthetic histories, sensitivity analysis, ≥99% sync reliability, 99.9% availability over
+  ≥7 days) not yet run (D19).
 - Production TLS, encrypted database storage, secret management, and real-user validation are deployment/final-study
   requirements; see `EVALUATION.md`.
-  (`frontend/src/pages/ElderCheckin.jsx`).
-
----
 
 ## Test credentials
 See [`TEST_CREDENTIALS.md`](./TEST_CREDENTIALS.md) for the accounts created

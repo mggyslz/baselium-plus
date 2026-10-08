@@ -55,11 +55,31 @@
 
 - [x] Review against functional/non-functional requirements — see `EVALUATION.md`.
 - [x] Refine thresholds based on deterministic synthetic test data — 100% recall for 20 injected
-      extreme deviations and 0% false positives for 100 normal samples; real-user validation remains a limitation.
+      extreme deviations and 0% false positives for 100 normal samples (earlier threshold set — re-run after D18 alignment;
+      see "Paper alignment"); real-user validation remains a limitation.
 - [x] Polish dashboard — trend charts, triage view, and caregiver-authorized Excel activity reports.
 - [x] Audit log review for Data Privacy Act compliance — access, check-in, alert, health-note, report,
       and admin-view actions are logged; deployment security requirements are documented in `EVALUATION.md`.
 - [x] Prep for final defense — evidence and demonstration checklist are in `EVALUATION.md`.
+
+## Paper alignment (docs ↔ proposal)
+
+Docs now follow the proposal (D18–D20). Open work to make the code and evidence match:
+
+- [x] Align mood/activity detection with D18: σ_min = 0.5, exclusion of |z| ≥ 1.5 days from the baseline,
+      3-consecutive-day flag rule, 2.5 cold-start threshold, severity bands, and +1 level at 5+ days.
+- [ ] Align `frequency_deviation` with D18's z-score model. The schema currently stores only a single aggregate
+      frequency, not a historical frequency standard deviation, so it cannot yet be scored by the same rule.
+- [ ] Extend the synthetic generator to the D19 dataset (≥30 histories × 30 days, ≥3.5 SD shift for 5+ days after day 7)
+      and report recall / false-positive rate per history, plus the 1.5–<3.5 SD sensitivity analysis.
+- [ ] Offline-sync reliability test (≥99% without loss or duplication) — requires the sync protocol below.
+- [ ] Availability test: automated health checks at fixed intervals for ≥7 continuous days (target 99.9%).
+- [ ] Sync protocol: add `check_ins.checkin_date` + unique (user_id, checkin_date), `synced_at`; last-write-wins with
+      server receipt tiebreaker; replace device timestamps >24h ahead of server time; lock edits after 11:59 PM local.
+- [ ] Add `health_notes.anomaly_id` (note linked to an alert, per proposal ERD) or update the proposal ERD.
+- [ ] Decide assignment authority: Admin-only (proposal) vs. caregiver self-assign (`POST /api/caregiver/assign`).
+- [ ] Smartwatch conceptual prototype (non-functional, high-fidelity) or keep as a stated limitation.
+- [ ] Adjust escalation plan wording: daily reminders are device-local in the proposal, not server-side.
 
 ## Bugs
 
@@ -120,6 +140,7 @@ accessible experience before adding broad new backend modules:
       a caregiver grant is the sole supported access path, preserving the D6 privacy boundary.
 - [x] Add offline-ready elder check-ins: queue a completed check-in locally when offline,
       show its pending state clearly, and synchronize it automatically after reconnecting.
+      (Web client only; the proposal's full sync protocol is tracked under "Paper alignment".)
 - [x] Expand frontend tests for elder check-in submission and errors, Family Viewer's restricted
       view, caregiver triage/acknowledgement/report download, and WebSocket-driven updates.
 - [x] Replace `frontend/README.md`'s default Vite content with frontend setup, environment

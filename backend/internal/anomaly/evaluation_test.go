@@ -21,7 +21,7 @@ func TestSyntheticQualityGate(t *testing.T) {
 	const injected = 20
 	var detected int
 	for i := 0; i < injected; i++ {
-		if checkDeviation(1, 1, 100+i, "mood_deviation", "mood", 1, baselineMean, baselineStddev, 1) != nil {
+		if checkDeviation(1, 1, 100+i, "mood_deviation", "mood", 1, baselineMean, baselineStddev, sustainedDays) != nil {
 			detected++
 		}
 	}

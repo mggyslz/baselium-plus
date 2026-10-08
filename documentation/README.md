@@ -15,14 +15,15 @@ A behavioral monitoring system for the elderly that builds a **per-elder statist
 | **Elder** | Submits daily check-ins, receives reminders |
 | **Caregiver** | Full dashboard, alerts, reports, manages elder/family access |
 | **Family Viewer** | Read-only status view, high-severity alerts only |
+| **Admin** | Account management, caregiver–elder assignment, system overview, audit-log viewer |
 
 ## Tech stack
 - **Elder client (current):** responsive React web check-in screen (React Native deferred)
 - **Web:** React
-- **Backend:** Go (Gin/Echo) + sqlc
+- **Backend:** Go (stdlib `net/http`; `sqlc` not adopted — see D8)
 - **Database:** PostgreSQL
-- **Notifications:** WebSockets for active dashboards (FCM deferred; see D13)
-- **Auth:** JWT, role-based
+- **Notifications:** WebSockets for active dashboards (FCM deferred, D13)
+- **Auth:** JWT access tokens + rotating refresh tokens, role-based (elder / caregiver / family / admin)
 
 ## Repo layout (backend)
 ```
@@ -31,7 +32,7 @@ internal/
 ├── checkin/       # daily check-in capture
 ├── baseline/      # rolling mean/stddev/frequency computation
 ├── anomaly/       # deviation detection + severity classification
-├── notification/  # FCM, WebSocket, retry logic
+├── notification/  # WebSocket, retry logic (FCM deferred)
 ├── dashboard/     # trends, triage view, reports
 ├── family/        # read-only access grant/revoke
 └── audit/         # audit_logs (Data Privacy Act compliance)
@@ -43,6 +44,7 @@ internal/
 
 ```mermaid
 erDiagram
+    ACCOUNTS ||--o| ADMINS : "has profile"
     ACCOUNTS ||--o| USERS : "has profile"
     ACCOUNTS ||--o| CAREGIVERS : "has profile"
     ACCOUNTS ||--o| FAMILY_ACCESS : "has profile"
@@ -57,18 +59,27 @@ erDiagram
     CHECK_INS ||--o| ANOMALIES : "may trigger"
     ANOMALIES ||--o{ NOTIFICATIONS : "generates"
     CAREGIVERS ||--o{ NOTIFICATIONS : "receives"
+    NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_ATTEMPTS : "logs"
     USERS ||--o{ HEALTH_NOTES : "documented in"
     CAREGIVERS ||--o{ HEALTH_NOTES : "authors"
     ACCOUNTS ||--o{ AUDIT_LOGS : "performs"
+    ACCOUNTS ||--o{ REFRESH_TOKENS : "holds"
 
     ACCOUNTS {
         int account_id PK
         varchar email UK
         varchar password_hash
-        varchar role "caregiver, elder, family"
+        varchar role "admin, caregiver, elder, family"
         boolean is_active
         timestamp created_at
         timestamp last_login
+    }
+
+    ADMINS {
+        int admin_id PK
+        int account_id FK
+        varchar full_name
+        timestamp created_at
     }
 
     USERS {
@@ -119,6 +130,7 @@ erDiagram
         text notes
         text context_note
         boolean is_missed
+        varchar sync_status
         timestamp created_at
     }
 
@@ -156,8 +168,36 @@ erDiagram
         int caregiver_id FK
         text message
         timestamp sent_at
+        int delivery_attempts
+        timestamp delivered_at
+        timestamp next_delivery_at
         boolean is_read
         timestamp acknowledged_at
+    }
+
+    NOTIFICATION_DELIVERY_ATTEMPTS {
+        int delivery_attempt_id PK
+        int notification_id FK
+        timestamp attempted_at
+        boolean delivered
+        text error_detail
+    }
+
+    REFRESH_TOKENS {
+        int refresh_token_id PK
+        int account_id FK
+        varchar token_hash UK "SHA-256 of opaque token"
+        timestamp expires_at
+        timestamp revoked_at
+        int replaced_by FK
+        timestamp created_at
+    }
+
+    LOGIN_FAILURES {
+        int failure_id PK
+        varchar email
+        varchar remote_addr
+        timestamp attempted_at
     }
 
     HEALTH_NOTES {
@@ -178,9 +218,13 @@ erDiagram
     }
 ```
 
+**Schema vs. proposal ERD (Fig. 6):** the proposal's ERD has 12 tables. This schema has 15 — it adds `refresh_tokens`, `login_failures` and `notification_delivery_attempts` (security and delivery-evidence tables) plus delivery columns on `notifications`. Three proposal columns are **not yet in the schema**: `check_ins.checkin_date` (with a unique user + date constraint), `check_ins.synced_at`, and `health_notes.anomaly_id`. See D20 and `TODO.md` ("Paper alignment").
+
 The raw source of truth for this schema (DBML format, used to generate the actual Postgres migrations) lives in `schema.dbml` — edit that file if you're going to run migrations, and update this Mermaid block to match so the docs don't drift.
 
 ## Docs
 - [`PROJECT_CONTEXT.md`](./PROJECT_CONTEXT.md) — goals, architecture, coding rules, constraints, implementation status
 - [`TODO.md`](./TODO.md) — current tasks by phase
-- [`DECISIONS.md`](./DECISIONS.md) — why key architectural decisions were made
+- [`DECISIONS.md`](./DECISIONS.md) — why key architectural decisions were made (D18–D20: detection rules, evaluation protocol, undelivered proposal items)
+- [`APPLICATION_STATUS.md`](./APPLICATION_STATUS.md) — what is implemented right now
+- [`TESTING.md`](./TESTING.md) / [`EVALUATION.md`](./EVALUATION.md) — test commands, evaluation protocol, limitations

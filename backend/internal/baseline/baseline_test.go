@@ -22,3 +22,10 @@ func TestMeanStddevEmptyAndSingle(t *testing.T) {
 		t.Fatalf("single mean/stddev = %v/%v, want 3/0", mean, stddev)
 	}
 }
+
+func TestFilteredMeanStddevExcludesAnomalousDay(t *testing.T) {
+	mean, stddev := filteredMeanStddev([]float64{4, 4, 4, 4, 4, 4, 1})
+	if mean != 4 || stddev != 0 {
+		t.Fatalf("filtered mean/stddev = %v/%v, want 4/0", mean, stddev)
+	}
+}
